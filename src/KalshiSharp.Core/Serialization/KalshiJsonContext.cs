@@ -65,6 +65,8 @@ namespace KalshiSharp.Core.Serialization;
 [JsonSerializable(typeof(SubscriptionConfirmation))]
 [JsonSerializable(typeof(UnsubscriptionConfirmation))]
 [JsonSerializable(typeof(ErrorMessage))]
+// Common collection types
+[JsonSerializable(typeof(IReadOnlyList<string>))]
 internal sealed partial class KalshiJsonContext : JsonSerializerContext
 {
 }
