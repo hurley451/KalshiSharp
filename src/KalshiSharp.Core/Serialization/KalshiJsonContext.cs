@@ -2,6 +2,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using KalshiSharp.Core.Errors;
 using KalshiSharp.Core.Serialization.Converters;
+using KalshiSharp.Models.Common;
+using KalshiSharp.Models.Responses;
 
 namespace KalshiSharp.Core.Serialization;
 
@@ -9,17 +11,43 @@ namespace KalshiSharp.Core.Serialization;
 /// Source-generated JSON serialization context for KalshiSharp.
 /// Provides AOT-compatible and high-performance serialization.
 /// </summary>
-/// <remarks>
-/// Additional types from KalshiSharp.Models will be added as [JsonSerializable] attributes
-/// in subsequent implementation phases.
-/// </remarks>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = false,
     AllowTrailingCommas = true,
     ReadCommentHandling = JsonCommentHandling.Skip)]
+// Core error type
 [JsonSerializable(typeof(KalshiErrorResponse))]
+// Response types
+[JsonSerializable(typeof(ExchangeStatusResponse))]
+[JsonSerializable(typeof(ExchangeScheduleResponse))]
+[JsonSerializable(typeof(ScheduleEntry))]
+[JsonSerializable(typeof(MarketResponse))]
+[JsonSerializable(typeof(OrderResponse))]
+[JsonSerializable(typeof(OrderBookResponse))]
+[JsonSerializable(typeof(TradeResponse))]
+[JsonSerializable(typeof(EventResponse))]
+[JsonSerializable(typeof(BalanceResponse))]
+[JsonSerializable(typeof(PositionResponse))]
+[JsonSerializable(typeof(FillResponse))]
+[JsonSerializable(typeof(UserResponse))]
+// Paged response types
+[JsonSerializable(typeof(PagedResponse<MarketResponse>))]
+[JsonSerializable(typeof(PagedResponse<OrderResponse>))]
+[JsonSerializable(typeof(PagedResponse<TradeResponse>))]
+[JsonSerializable(typeof(PagedResponse<EventResponse>))]
+[JsonSerializable(typeof(PagedResponse<PositionResponse>))]
+[JsonSerializable(typeof(PagedResponse<FillResponse>))]
+// Collection types for responses
+[JsonSerializable(typeof(IReadOnlyList<MarketResponse>))]
+[JsonSerializable(typeof(IReadOnlyList<OrderResponse>))]
+[JsonSerializable(typeof(IReadOnlyList<TradeResponse>))]
+[JsonSerializable(typeof(IReadOnlyList<EventResponse>))]
+[JsonSerializable(typeof(IReadOnlyList<PositionResponse>))]
+[JsonSerializable(typeof(IReadOnlyList<FillResponse>))]
+[JsonSerializable(typeof(IReadOnlyList<ScheduleEntry>))]
+[JsonSerializable(typeof(IReadOnlyList<int[]>))]
 internal sealed partial class KalshiJsonContext : JsonSerializerContext
 {
 }
