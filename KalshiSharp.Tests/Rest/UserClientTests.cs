@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using FluentAssertions;
 using KalshiSharp.Auth;
+using KalshiSharp.Tests.Auth;
 using KalshiSharp.Configuration;
 using KalshiSharp.Errors;
 using KalshiSharp.Http;
@@ -36,7 +37,7 @@ public sealed class UserClientTests : IDisposable
             Timeout = TimeSpan.FromSeconds(5)
         });
 
-        _signer = new HmacSha256RequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
+        _signer = new MockRequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
         var clock = new SystemClock();
 
         var signingHandler = new SigningDelegatingHandler(
@@ -136,9 +137,9 @@ public sealed class UserClientTests : IDisposable
         // Arrange
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/users/me")
-                .WithHeader(HmacSha256RequestSigner.AccessKeyHeader, "test-api-key")
-                .WithHeader(HmacSha256RequestSigner.AccessTimestampHeader, "*")
-                .WithHeader(HmacSha256RequestSigner.AccessSignatureHeader, "*")
+                .WithHeader(MockRequestSigner.AccessKeyHeader, "test-api-key")
+                .WithHeader(MockRequestSigner.AccessTimestampHeader, "*")
+                .WithHeader(MockRequestSigner.AccessSignatureHeader, "*")
                 .UsingGet())
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
