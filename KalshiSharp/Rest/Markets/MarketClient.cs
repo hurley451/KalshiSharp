@@ -25,7 +25,7 @@ internal sealed class MarketClient : IMarketClient
     }
 
     /// <inheritdoc />
-    public Task<MarketResponse> GetMarketAsync(string ticker, CancellationToken cancellationToken = default)
+    public async Task<MarketResponse> GetMarketAsync(string ticker, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ticker);
 
@@ -35,7 +35,8 @@ internal sealed class MarketClient : IMarketClient
             Path = $"{BasePath}/{Uri.EscapeDataString(ticker)}"
         };
 
-        return _httpClient.SendAsync<MarketResponse>(request, cancellationToken);
+        var response = await _httpClient.SendAsync<SingleMarketResponse>(request, cancellationToken);
+        return response.Market;
     }
 
     /// <inheritdoc />

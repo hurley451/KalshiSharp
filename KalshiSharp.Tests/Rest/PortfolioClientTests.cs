@@ -75,8 +75,8 @@ public sealed class PortfolioClientTests : IDisposable
                 .WithBody("""
                     {
                         "balance": 100000,
-                        "available_balance": 75000,
-                        "portfolio_balance": 25000
+                        "portfolio_value": 25000,
+                        "updated_ts": 1704067200
                     }
                     """));
 
@@ -86,44 +86,8 @@ public sealed class PortfolioClientTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         result.Balance.Should().Be(100000);
-        result.AvailableBalance.Should().Be(75000);
-        result.PortfolioBalance.Should().Be(25000);
-    }
-
-    [Fact]
-    public async Task GetBalanceAsync_WithAllFields_ReturnsCompleteBalance()
-    {
-        // Arrange
-        _server.Given(Request.Create()
-                .WithPath("/trade-api/v2/portfolio/balance")
-                .UsingGet())
-            .RespondWith(Response.Create()
-                .WithStatusCode(200)
-                .WithHeader("Content-Type", "application/json")
-                .WithBody("""
-                    {
-                        "balance": 100000,
-                        "available_balance": 75000,
-                        "portfolio_balance": 25000,
-                        "pending_deposits": 5000,
-                        "pending_withdrawals": 2000,
-                        "total_deposits": 150000,
-                        "total_withdrawals": 50000
-                    }
-                    """));
-
-        // Act
-        var result = await _portfolioClient.GetBalanceAsync();
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Balance.Should().Be(100000);
-        result.AvailableBalance.Should().Be(75000);
-        result.PortfolioBalance.Should().Be(25000);
-        result.PendingDeposits.Should().Be(5000);
-        result.PendingWithdrawals.Should().Be(2000);
-        result.TotalDeposits.Should().Be(150000);
-        result.TotalWithdrawals.Should().Be(50000);
+        result.PortfolioValue.Should().Be(25000);
+        result.UpdatedTs.Should().Be(1704067200);
     }
 
     [Fact]
@@ -386,7 +350,7 @@ public sealed class PortfolioClientTests : IDisposable
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
                 .WithHeader("Content-Type", "application/json")
-                .WithBody("""{"balance": 100000, "available_balance": 100000}"""));
+                .WithBody("""{"balance": 100000, "portfolio_value": 25000, "updated_ts": 1704067200}"""));
 
         // Act
         var result = await _portfolioClient.GetBalanceAsync();

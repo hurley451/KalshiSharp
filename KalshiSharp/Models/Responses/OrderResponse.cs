@@ -13,6 +13,11 @@ public sealed record OrderResponse
     public required string OrderId { get; init; }
 
     /// <summary>
+    /// User ID that placed the order.
+    /// </summary>
+    public string? UserId { get; init; }
+
+    /// <summary>
     /// Client-provided order identifier for correlation.
     /// </summary>
     public string? ClientOrderId { get; init; }
@@ -28,6 +33,11 @@ public sealed record OrderResponse
     public required OrderSide Side { get; init; }
 
     /// <summary>
+    /// Whether this is a buy or sell action.
+    /// </summary>
+    public required string Action { get; init; }
+
+    /// <summary>
     /// Order type (Limit or Market).
     /// </summary>
     public required OrderType Type { get; init; }
@@ -38,22 +48,7 @@ public sealed record OrderResponse
     public required OrderStatus Status { get; init; }
 
     /// <summary>
-    /// Whether this is a buy or sell action.
-    /// </summary>
-    public required string Action { get; init; }
-
-    /// <summary>
-    /// Total quantity ordered.
-    /// </summary>
-    public required int Count { get; init; }
-
-    /// <summary>
-    /// Quantity remaining (not yet filled).
-    /// </summary>
-    public required int RemainingCount { get; init; }
-
-    /// <summary>
-    /// Limit price in cents (1-99).
+    /// Yes price in cents (1-99).
     /// </summary>
     public required int YesPrice { get; init; }
 
@@ -63,47 +58,102 @@ public sealed record OrderResponse
     public required int NoPrice { get; init; }
 
     /// <summary>
-    /// Time in force for this order.
+    /// Yes price in dollars (string representation).
     /// </summary>
-    public required TimeInForce TimeInForce { get; init; }
+    public string? YesPriceDollars { get; init; }
 
     /// <summary>
-    /// When the order was created.
+    /// No price in dollars (string representation).
     /// </summary>
-    public required DateTimeOffset CreatedTime { get; init; }
+    public string? NoPriceDollars { get; init; }
 
     /// <summary>
-    /// When the order was last updated.
+    /// Number of contracts filled.
     /// </summary>
-    public DateTimeOffset? UpdatedTime { get; init; }
+    public required int FillCount { get; init; }
 
     /// <summary>
-    /// When the order expires (for GTD orders).
+    /// Quantity remaining (not yet filled).
+    /// </summary>
+    public required int RemainingCount { get; init; }
+
+    /// <summary>
+    /// Initial quantity ordered.
+    /// </summary>
+    public required int InitialCount { get; init; }
+
+    /// <summary>
+    /// Taker fees in cents.
+    /// </summary>
+    public int? TakerFees { get; init; }
+
+    /// <summary>
+    /// Maker fees in cents.
+    /// </summary>
+    public int? MakerFees { get; init; }
+
+    /// <summary>
+    /// Taker fill cost in cents.
+    /// </summary>
+    public int? TakerFillCost { get; init; }
+
+    /// <summary>
+    /// Maker fill cost in cents.
+    /// </summary>
+    public int? MakerFillCost { get; init; }
+
+    /// <summary>
+    /// Taker fill cost in dollars (string representation).
+    /// </summary>
+    public string? TakerFillCostDollars { get; init; }
+
+    /// <summary>
+    /// Maker fill cost in dollars (string representation).
+    /// </summary>
+    public string? MakerFillCostDollars { get; init; }
+
+    /// <summary>
+    /// Queue position for resting orders.
+    /// </summary>
+    public int? QueuePosition { get; init; }
+
+    /// <summary>
+    /// Taker fees in dollars (string representation).
+    /// </summary>
+    public string? TakerFeesDollars { get; init; }
+
+    /// <summary>
+    /// Maker fees in dollars (string representation).
+    /// </summary>
+    public string? MakerFeesDollars { get; init; }
+
+    /// <summary>
+    /// When the order expires.
     /// </summary>
     public DateTimeOffset? ExpirationTime { get; init; }
 
     /// <summary>
-    /// User ID that placed the order.
+    /// When the order was created.
     /// </summary>
-    public string? UserId { get; init; }
+    public DateTimeOffset? CreatedTime { get; init; }
 
     /// <summary>
-    /// Reason for order cancellation or rejection.
+    /// When the order was last updated.
     /// </summary>
-    public string? DecreaseReason { get; init; }
+    public DateTimeOffset? LastUpdateTime { get; init; }
 
     /// <summary>
-    /// Whether the order should be resting only (maker).
+    /// Self-trade prevention type.
     /// </summary>
-    public bool? MakerFill { get; init; }
+    public string? SelfTradePreventionType { get; init; }
 
     /// <summary>
-    /// Amount paid for fees so far (in cents).
+    /// Order group ID for batch orders.
     /// </summary>
-    public int? FeesPaid { get; init; }
+    public string? OrderGroupId { get; init; }
 
     /// <summary>
-    /// Quantity that has been filled.
+    /// Whether to cancel order when market is paused.
     /// </summary>
-    public int FilledCount => Count - RemainingCount;
+    public bool? CancelOrderOnPause { get; init; }
 }

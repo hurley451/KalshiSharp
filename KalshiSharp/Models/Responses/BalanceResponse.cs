@@ -6,37 +6,17 @@ namespace KalshiSharp.Models.Responses;
 public sealed record BalanceResponse
 {
     /// <summary>
-    /// Total account balance in cents.
+    /// Member's available balance in cents. This represents the amount available for trading.
     /// </summary>
     public required long Balance { get; init; }
 
     /// <summary>
-    /// Available balance for trading in cents (excludes collateral).
+    /// Member's portfolio value in cents. This is the current value of all positions held.
     /// </summary>
-    public required long AvailableBalance { get; init; }
+    public required long PortfolioValue { get; init; }
 
     /// <summary>
-    /// Balance currently held as collateral for open positions.
+    /// Unix timestamp of the last update to the balance.
     /// </summary>
-    public long? PortfolioBalance { get; init; }
-
-    /// <summary>
-    /// Pending deposits in cents.
-    /// </summary>
-    public long? PendingDeposits { get; init; }
-
-    /// <summary>
-    /// Pending withdrawals in cents.
-    /// </summary>
-    public long? PendingWithdrawals { get; init; }
-
-    /// <summary>
-    /// Total payout from settled positions.
-    /// </summary>
-    public long? TotalDeposits { get; init; }
-
-    /// <summary>
-    /// Total withdrawn from account.
-    /// </summary>
-    public long? TotalWithdrawals { get; init; }
+    public required long UpdatedTs { get; init; }
 }
