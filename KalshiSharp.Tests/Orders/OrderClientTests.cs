@@ -1,5 +1,6 @@
 using FluentAssertions;
 using KalshiSharp.Auth;
+using KalshiSharp.Tests.Auth;
 using KalshiSharp.Configuration;
 using KalshiSharp.Errors;
 using KalshiSharp.Http;
@@ -36,7 +37,7 @@ public sealed class OrderClientTests : IDisposable
             Timeout = TimeSpan.FromSeconds(5)
         });
 
-        _signer = new HmacSha256RequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
+        _signer = new MockRequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
         var clock = new SystemClock();
 
         var signingHandler = new SigningDelegatingHandler(
@@ -368,7 +369,7 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [
+                    "orders": [
                         {
                             "order_id": "order-001",
                             "ticker": "MARKET-1",
@@ -430,7 +431,7 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [],
+                    "orders": [],
                     "cursor": null
                 }
                 """));
@@ -464,7 +465,7 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [
+                    "orders": [
                         {
                             "order_id": "order-003",
                             "ticker": "MARKET-3",
@@ -510,7 +511,7 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [],
+                    "orders": [],
                     "cursor": null
                 }
                 """));

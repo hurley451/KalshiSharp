@@ -1,5 +1,6 @@
 using FluentAssertions;
 using KalshiSharp.Auth;
+using KalshiSharp.Tests.Auth;
 using KalshiSharp.Configuration;
 using KalshiSharp.Errors;
 using KalshiSharp.Http;
@@ -36,7 +37,7 @@ public sealed class MarketClientTests : IDisposable
             Timeout = TimeSpan.FromSeconds(5)
         });
 
-        _signer = new HmacSha256RequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
+        _signer = new MockRequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
         var clock = new SystemClock();
 
         var signingHandler = new SigningDelegatingHandler(
@@ -141,7 +142,7 @@ public sealed class MarketClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [
+                    "markets": [
                         {
                             "ticker": "MARKET-1",
                             "event_ticker": "EVENT-1",
@@ -187,7 +188,7 @@ public sealed class MarketClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [],
+                    "markets": [],
                     "cursor": null
                 }
                 """));
@@ -221,7 +222,7 @@ public sealed class MarketClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [
+                    "markets": [
                         {
                             "ticker": "MARKET-2",
                             "event_ticker": "EVENT-2",
@@ -328,7 +329,7 @@ public sealed class MarketClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [
+                    "trades": [
                         {
                             "trade_id": "trade-001",
                             "ticker": "MARKET-ABC",
@@ -374,7 +375,7 @@ public sealed class MarketClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [],
+                    "trades": [],
                     "cursor": null
                 }
                 """));

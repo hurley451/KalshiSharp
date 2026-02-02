@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using FluentAssertions;
 using KalshiSharp.Auth;
+using KalshiSharp.Tests.Auth;
 using KalshiSharp.Configuration;
 using KalshiSharp.Http;
 using KalshiSharp.Models.Enums;
@@ -36,7 +37,7 @@ public sealed class PortfolioClientTests : IDisposable
             Timeout = TimeSpan.FromSeconds(5)
         });
 
-        _signer = new HmacSha256RequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
+        _signer = new MockRequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
         var clock = new SystemClock();
 
         var signingHandler = new SigningDelegatingHandler(
@@ -102,7 +103,7 @@ public sealed class PortfolioClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                     {
-                        "items": [
+                        "positions": [
                             {
                                 "ticker": "TICKER-1",
                                 "event_ticker": "EVENT-1",
@@ -176,7 +177,7 @@ public sealed class PortfolioClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                     {
-                        "items": [
+                        "positions": [
                             {
                                 "ticker": "SPECIFIC-TICKER",
                                 "event_ticker": "EVENT-1",
@@ -210,7 +211,7 @@ public sealed class PortfolioClientTests : IDisposable
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
                 .WithHeader("Content-Type", "application/json")
-                .WithBody("""{"items": [], "cursor": null}"""));
+                .WithBody("""{"positions": [], "cursor": null}"""));
 
         // Act
         var result = await _portfolioClient.ListPositionsAsync(eventTicker: "EVENT-123");
@@ -232,7 +233,7 @@ public sealed class PortfolioClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                     {
-                        "items": [
+                        "fills": [
                             {
                                 "trade_id": "trade-123",
                                 "order_id": "order-456",
@@ -284,7 +285,7 @@ public sealed class PortfolioClientTests : IDisposable
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
                 .WithHeader("Content-Type", "application/json")
-                .WithBody("""{"items": [], "cursor": null}"""));
+                .WithBody("""{"fills": [], "cursor": null}"""));
 
         // Act
         var result = await _portfolioClient.ListFillsAsync(cursor: "fill-page-2", limit: 25);
@@ -306,7 +307,7 @@ public sealed class PortfolioClientTests : IDisposable
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
                 .WithHeader("Content-Type", "application/json")
-                .WithBody("""{"items": [], "cursor": null}"""));
+                .WithBody("""{"fills": [], "cursor": null}"""));
 
         // Act
         var result = await _portfolioClient.ListFillsAsync(ticker: "FILTERED-TICKER");
@@ -327,7 +328,7 @@ public sealed class PortfolioClientTests : IDisposable
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
                 .WithHeader("Content-Type", "application/json")
-                .WithBody("""{"items": [], "cursor": null}"""));
+                .WithBody("""{"fills": [], "cursor": null}"""));
 
         // Act
         var result = await _portfolioClient.ListFillsAsync(orderId: "specific-order");
@@ -343,9 +344,9 @@ public sealed class PortfolioClientTests : IDisposable
         // Arrange
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/portfolio/balance")
-                .WithHeader(HmacSha256RequestSigner.AccessKeyHeader, "test-api-key")
-                .WithHeader(HmacSha256RequestSigner.AccessTimestampHeader, "*")
-                .WithHeader(HmacSha256RequestSigner.AccessSignatureHeader, "*")
+                .WithHeader(MockRequestSigner.AccessKeyHeader, "test-api-key")
+                .WithHeader(MockRequestSigner.AccessTimestampHeader, "*")
+                .WithHeader(MockRequestSigner.AccessSignatureHeader, "*")
                 .UsingGet())
             .RespondWith(Response.Create()
                 .WithStatusCode(200)

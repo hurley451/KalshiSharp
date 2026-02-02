@@ -1,5 +1,6 @@
 using FluentAssertions;
 using KalshiSharp.Auth;
+using KalshiSharp.Tests.Auth;
 using KalshiSharp.Configuration;
 using KalshiSharp.Errors;
 using KalshiSharp.Http;
@@ -36,7 +37,7 @@ public sealed class EventClientTests : IDisposable
             Timeout = TimeSpan.FromSeconds(5)
         });
 
-        _signer = new HmacSha256RequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
+        _signer = new MockRequestSigner(options.Value.ApiKey, options.Value.ApiSecret);
         var clock = new SystemClock();
 
         var signingHandler = new SigningDelegatingHandler(
@@ -183,7 +184,7 @@ public sealed class EventClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [
+                    "events": [
                         {
                             "event_ticker": "EVENT-1",
                             "title": "Event 1",
@@ -221,7 +222,7 @@ public sealed class EventClientTests : IDisposable
         // Arrange
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/events")
-                .WithParam("status", "open")
+                .WithParam("status", "active")
                 .WithParam("series_ticker", "SERIES-123")
                 .WithParam("limit", "50")
                 .UsingGet())
@@ -230,7 +231,7 @@ public sealed class EventClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [],
+                    "events": [],
                     "cursor": null
                 }
                 """));
@@ -264,7 +265,7 @@ public sealed class EventClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [
+                    "events": [
                         {
                             "event_ticker": "EVENT-3",
                             "title": "Event 3",
@@ -301,7 +302,7 @@ public sealed class EventClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "items": [
+                    "events": [
                         {
                             "event_ticker": "EVENT-1",
                             "title": "Event 1",
