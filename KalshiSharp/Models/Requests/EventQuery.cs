@@ -16,7 +16,7 @@ public sealed record EventQuery : PaginationParameters
     /// <summary>
     /// Filter by event status.
     /// </summary>
-    public MarketStatus? Status { get; init; }
+    public EventStatus? Status { get; init; }
 
     /// <summary>
     /// Filter by series ticker.
@@ -24,9 +24,10 @@ public sealed record EventQuery : PaginationParameters
     public string? SeriesTicker { get; init; }
 
     /// <summary>
-    /// Search query to filter events by title or description.
+    /// Parameter to specify if nested markets should be included in the response. 
+    /// When true, each event will include a 'markets' field containing a list of Market objects associated with that event.
     /// </summary>
-    public string? WithNestedMarkets { get; init; }
+    public bool? WithNestedMarkets { get; init; }
 
     /// <summary>
     /// Builds the query string for the API request.
@@ -44,7 +45,7 @@ public sealed record EventQuery : PaginationParameters
         }
 
         builder.AppendIfNotEmpty("series_ticker", SeriesTicker);
-        builder.AppendIfNotEmpty("with_nested_markets", WithNestedMarkets);
+        builder.AppendIfNotEmpty("with_nested_markets", WithNestedMarkets?.ToString()?.ToLowerInvariant());
 
         return builder.Build();
     }

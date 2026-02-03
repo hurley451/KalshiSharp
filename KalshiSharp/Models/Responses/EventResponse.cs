@@ -26,14 +26,9 @@ public sealed record EventResponse
     public required string Category { get; init; }
 
     /// <summary>
-    /// Mutually exclusive status ("true" for mutually exclusive).
+    /// Mutually exclusive status ('true' for mutually exclusive).
     /// </summary>
-    public string? MutuallyExclusive { get; init; }
-
-    /// <summary>
-    /// Number of markets in this event.
-    /// </summary>
-    public required int MarketCount { get; init; }
+    public bool? MutuallyExclusive { get; init; }   
 
     /// <summary>
     /// Markets belonging to this event.
