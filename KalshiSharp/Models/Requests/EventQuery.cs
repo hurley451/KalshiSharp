@@ -1,4 +1,3 @@
-using System.Globalization;
 using KalshiSharp.Models.Common;
 using KalshiSharp.Models.Enums;
 

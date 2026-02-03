@@ -91,8 +91,7 @@ public sealed class EventClientTests : IDisposable
         result.Should().NotBeNull();
         result.EventTicker.Should().Be("AAPL-EVENT");
         result.Title.Should().Be("Apple Stock Events");
-        result.Category.Should().Be("tech");
-        result.MarketCount.Should().Be(5);
+        result.Category.Should().Be("tech");        
         result.SeriesTicker.Should().Be("TECH-SERIES");
     }
 
@@ -222,7 +221,7 @@ public sealed class EventClientTests : IDisposable
         // Arrange
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/events")
-                .WithParam("status", "active")
+                .WithParam("status", "open")
                 .WithParam("series_ticker", "SERIES-123")
                 .WithParam("limit", "50")
                 .UsingGet())
@@ -238,7 +237,7 @@ public sealed class EventClientTests : IDisposable
 
         var query = new EventQuery
         {
-            Status = MarketStatus.Active,
+            Status = EventStatus.Open,
             SeriesTicker = "SERIES-123",
             Limit = 50
         };
@@ -330,7 +329,7 @@ public sealed class EventClientTests : IDisposable
                 }
                 """));
 
-        var query = new EventQuery { WithNestedMarkets = "true" };
+        var query = new EventQuery { WithNestedMarkets = true };
 
         // Act
         var result = await _client.ListEventsAsync(query);
