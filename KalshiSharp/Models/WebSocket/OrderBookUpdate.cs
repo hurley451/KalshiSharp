@@ -137,7 +137,7 @@ public sealed record OrderBookSnapshot : WebSocketMessage<OrderBookSnapshot.Mess
         /// Bids on the No side. Each entry is [price, quantity].
         /// </summary>
         [JsonPropertyName("no")]
-        public required IReadOnlyList<int[]>? No { get; init; }
+        public IReadOnlyList<int[]>? No { get; init; }
 
         /// <summary>
         /// Bids on the No side. Each entry is [price, quantity].
