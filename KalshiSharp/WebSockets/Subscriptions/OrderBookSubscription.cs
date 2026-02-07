@@ -2,7 +2,7 @@ namespace KalshiSharp.WebSockets.Subscriptions;
 
 /// <summary>
 /// Subscription for real-time order book updates.
-/// Receives <see cref="KalshiSharp.Models.WebSocket.OrderBookSnapshotMessage"/> on initial subscription
+/// Receives <see cref="KalshiSharp.Models.WebSocket.OrderBookSnapshot"/> on initial subscription
 /// and <see cref="KalshiSharp.Models.WebSocket.OrderBookUpdate"/> for subsequent changes.
 /// </summary>
 public sealed record OrderBookSubscription : WebSocketSubscription

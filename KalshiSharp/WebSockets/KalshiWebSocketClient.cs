@@ -346,12 +346,6 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
             if (message is not null)
             {
                 await _messageChannel.Writer.WriteAsync(message).ConfigureAwait(false);
-
-                // Handle heartbeat by logging
-                if (message is HeartbeatMessage)
-                {
-                    LogHeartbeatReceived();
-                }
             }
         }
         catch (JsonException ex)
@@ -575,9 +569,6 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "WebSocket disposed")]
     private partial void LogDisposed();
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Heartbeat received")]
-    private partial void LogHeartbeatReceived();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "WebSocket close received: {CloseStatus}")]
     private partial void LogCloseReceived(string closeStatus);
