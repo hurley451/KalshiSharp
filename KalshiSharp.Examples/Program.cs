@@ -1,6 +1,7 @@
 // KalshiSharp SDK Examples
 // Demonstrates common usage patterns for the Kalshi API client.
 
+using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -358,25 +359,21 @@ static async Task WebSocketExample(string apiKey, string apiSecret)
             {
                 switch (message)
                 {
-                    case OrderBookSnapshotMessage snapshot:
-                        Console.WriteLine($"[OrderBook Snapshot] {snapshot.MarketTicker}");
-                        Console.WriteLine($"  Yes levels: {snapshot.Yes.Count}");
-                        Console.WriteLine($"  No levels: {snapshot.No.Count}");
+                    case OrderBookSnapshot snapshot:
+                        Console.WriteLine($"[OrderBook Snapshot] {snapshot.Message.MarketTicker}");
+                        Console.WriteLine($"  Yes levels: {snapshot.Message.Yes?.Count}");
+                        Console.WriteLine($"  No levels: {snapshot.Message.No?.Count}");
                         break;
 
                     case OrderBookUpdate update:
-                        Console.WriteLine($"[OrderBook Delta] {update.MarketTicker}");
-                        Console.WriteLine($"  Price: {update.Price}, Delta: {update.Delta}, Side: {update.Side}");
+                        Console.WriteLine($"[OrderBook Delta] {update.Message.MarketTicker}");
+                        Console.WriteLine($"  Price: {update.Message.Price}, Delta: {update.Message.Delta}, Side: {update.Message.Side}");
                         break;
 
                     case TradeUpdate trade:
-                        Console.WriteLine($"[Trade] {trade.MarketTicker}");
-                        Console.WriteLine($"  Count: {trade.Count}, Yes Price: {trade.YesPrice}c");
-                        break;
-
-                    case HeartbeatMessage:
-                        Console.WriteLine("[Heartbeat]");
-                        break;
+                        Console.WriteLine($"[Trade] {trade.Message.MarketTicker}");
+                        Console.WriteLine($"  Count: {trade.Message.Count}, Yes Price: {trade.Message.YesPrice}c");
+                        break;                 
 
                     case UnknownMessage unknown:
                         Console.WriteLine($"[Unknown] Type: {unknown.RawType}");

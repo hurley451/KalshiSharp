@@ -80,7 +80,8 @@ public sealed class EventClientTests : IDisposable
                     "title": "Apple Stock Events",
                     "category": "tech",
                     "market_count": 5,
-                    "series_ticker": "TECH-SERIES"
+                    "series_ticker": "TECH-SERIES",
+                    "collateral_return_type": "binary"
                 }
                 """));
 
@@ -128,7 +129,8 @@ public sealed class EventClientTests : IDisposable
                             "open_interest": 2500,
                             "can_close_early": true
                         }
-                    ]
+                    ],                
+                    "collateral_return_type": "binary"
                 }
                 """));
 
@@ -188,13 +190,15 @@ public sealed class EventClientTests : IDisposable
                             "event_ticker": "EVENT-1",
                             "title": "Event 1",
                             "category": "politics",
-                            "market_count": 3
+                            "market_count": 3,                
+                            "collateral_return_type": "binary"
                         },
                         {
                             "event_ticker": "EVENT-2",
                             "title": "Event 2",
                             "category": "economics",
-                            "market_count": 2
+                            "market_count": 2,                
+                            "collateral_return_type": "binary"
                         }
                     ],
                     "cursor": "next-page-cursor"
@@ -269,7 +273,8 @@ public sealed class EventClientTests : IDisposable
                             "event_ticker": "EVENT-3",
                             "title": "Event 3",
                             "category": "sports",
-                            "market_count": 1
+                            "market_count": 1,
+                            "collateral_return_type": "binary"
                         }
                     ],
                     "cursor": null
@@ -322,7 +327,8 @@ public sealed class EventClientTests : IDisposable
                                     "open_interest": 500,
                                     "can_close_early": false
                                 }
-                            ]
+                            ],
+                            "collateral_return_type": "binary"
                         }
                     ],
                     "cursor": null
@@ -359,7 +365,8 @@ public sealed class EventClientTests : IDisposable
                     "event_ticker": "EVENT-TEST-2024",
                     "title": "Test Event",
                     "category": "test",
-                    "market_count": 0
+                    "market_count": 0,
+                    "collateral_return_type": "binary"
                 }
                 """));
 

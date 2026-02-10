@@ -178,11 +178,14 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
                 "type": "orderbook_delta",
                 "seq": 12345,
-                "ts": 1704067200000,
-                "market_ticker": "MARKET-ABC",
-                "price": 50,
-                "delta": 100,
-                "side": "yes"
+                "msg" : {
+                  "ts": 1704067200000,
+                  "market_ticker": "MARKET-ABC",
+                  "market_id": "6F31765E-D070-41B9-A6EA-6AF3274B362B",
+                  "price": 50,
+                  "delta": 100,
+                  "side": "yes"
+                }
             }
             """;
 
@@ -211,11 +214,11 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         // Assert
         messages.Should().HaveCount(1);
         var update = messages[0].Should().BeOfType<OrderBookUpdate>().Subject;
-        update.MarketTicker.Should().Be("MARKET-ABC");
-        update.Price.Should().Be(50);
-        update.Delta.Should().Be(100);
-        update.Side.Should().Be("yes");
-        update.IsYesSide.Should().BeTrue();
+        update.Message.MarketTicker.Should().Be("MARKET-ABC");
+        update.Message.Price.Should().Be(50);
+        update.Message.Delta!.Should().Be(100);
+        update.Message.Side!.Should().Be("yes");
+        update.Message.IsYesSide!.Should().BeTrue();
         update.Sequence.Should().Be(12345);
     }
 
@@ -227,11 +230,14 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         await _client.ConnectAsync();
 
         var snapshotJson = """
-            {
+            {                
                 "type": "orderbook_snapshot",
-                "market_ticker": "MARKET-ABC",
-                "yes": [[50, 100], [51, 200]],
-                "no": [[49, 150]]
+                "msg": {
+                 "market_id": "6F31765E-D070-41B9-A6EA-6AF3274B362B",
+                 "market_ticker": "MARKET-ABC",
+                 "yes": [[50, 100], [51, 200]],
+                 "no": [[49, 150]]
+                }
             }
             """;
 
@@ -258,10 +264,10 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         }
 
         // Assert
-        var snapshot = messages[0].Should().BeOfType<OrderBookSnapshotMessage>().Subject;
-        snapshot.MarketTicker.Should().Be("MARKET-ABC");
-        snapshot.Yes.Should().HaveCount(2);
-        snapshot.No.Should().HaveCount(1);
+        var snapshot = messages[0].Should().BeOfType<OrderBookSnapshot>().Subject;
+        snapshot.Message.MarketTicker.Should().Be("MARKET-ABC");
+        snapshot.Message.Yes!.Should().HaveCount(2);
+        snapshot.Message.No!.Should().HaveCount(1);
     }
 
     [Fact]
@@ -275,14 +281,17 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
                 "type": "trade",
                 "seq": 999,
-                "ts": 1704067200000,
-                "market_ticker": "MARKET-XYZ",
-                "trade_id": "trade-123",
-                "side": "yes",
-                "count": 50,
-                "yes_price": 65,
-                "no_price": 35,
-                "taker_side": "yes"
+                "msg": {
+                    "ts": 1704067200000,
+                    "market_ticker": "MARKET-XYZ",
+                    "market_id": "6F31765E-D070-41B9-A6EA-6AF3274B362B",
+                    "trade_id": "trade-123",
+                    "side": "yes",
+                    "count": 50,
+                    "yes_price": 65,
+                    "no_price": 35,
+                    "taker_side": "yes"
+                }
             }
             """;
 
@@ -310,50 +319,10 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         // Assert
         var trade = messages[0].Should().BeOfType<TradeUpdate>().Subject;
-        trade.MarketTicker.Should().Be("MARKET-XYZ");
-        trade.TradeId.Should().Be("trade-123");
-        trade.Count.Should().Be(50);
-        trade.YesPrice.Should().Be(65);
-    }
-
-    [Fact]
-    public async Task Messages_ReceivesHeartbeat()
-    {
-        // Arrange
-        _mockConnection.SetupConnect();
-        await _client.ConnectAsync();
-
-        var heartbeatJson = """
-            {
-                "type": "heartbeat",
-                "ts": 1704067200000
-            }
-            """;
-
-        _mockConnection.EnqueueMessage(heartbeatJson);
-
-        // Act
-        var messages = new List<WebSocketMessage>();
-        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-
-        try
-        {
-            await foreach (var msg in _client.Messages.WithCancellation(cts.Token))
-            {
-                messages.Add(msg);
-                if (messages.Count >= 1)
-                {
-                    break;
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected
-        }
-
-        // Assert
-        messages[0].Should().BeOfType<HeartbeatMessage>();
+        trade.Message.MarketTicker!.Should().Be("MARKET-XYZ");
+        trade.Message.TradeId!.Should().Be("trade-123");
+        trade.Message.Count!.Should().Be(50);
+        trade.Message.YesPrice!.Should().Be(65);
     }
 
     [Fact]
@@ -366,8 +335,9 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         var confirmJson = """
             {
                 "type": "subscribed",
-                "channel": "orderbook_delta",
-                "markets": ["MARKET-ABC", "MARKET-XYZ"]
+                "msg": {
+                  "channel": "orderbook_delta"
+                }
             }
             """;
 
@@ -395,8 +365,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         // Assert
         var confirm = messages[0].Should().BeOfType<SubscriptionConfirmation>().Subject;
-        confirm.Channel.Should().Be("orderbook_delta");
-        confirm.Markets.Should().Contain("MARKET-ABC");
+        confirm.Message.Channel!.Should().Be("orderbook_delta");
     }
 
     [Fact]
@@ -408,9 +377,11 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         var errorJson = """
             {
-                "type": "error",
-                "code": "invalid_subscription",
-                "msg": "Market not found"
+                "type": "error",                
+                "msg": {
+                    "code": 100,
+                    "msg": "Market not found"
+                }
             }
             """;
 
@@ -438,8 +409,8 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         // Assert
         var error = messages[0].Should().BeOfType<ErrorMessage>().Subject;
-        error.Code.Should().Be("invalid_subscription");
-        error.Message.Should().Be("Market not found");
+        error.Message.Code.Should().Be(100);
+        error.Message.ErrorMessage.Should().Be("Market not found");
     }
 
     [Fact]

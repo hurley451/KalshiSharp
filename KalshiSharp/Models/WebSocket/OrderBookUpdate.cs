@@ -13,7 +13,8 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
     /// <summary>
     /// Sequential number that should be checked if you want to guarantee you received all the messages. Used for snapshot/delta consistency
     /// </summary>
-    public int Seq { get; init; }
+    [JsonPropertyName("seq")]
+    public int Sequence { get; init; }
 
     public sealed record MessageBody
     {
@@ -70,7 +71,7 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
         /// Timestamp for when the orderbook change was recorded.
         /// </summary>
         [JsonPropertyName("ts")]
-        public DateTimeOffset? TimeStamp { get; init; }
+        public DateTimeOffset? Timestamp { get; init; }
 
         /// <summary>
         /// Whether this is the Yes side.
