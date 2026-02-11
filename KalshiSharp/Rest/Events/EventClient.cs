@@ -24,7 +24,7 @@ internal sealed class EventClient : IEventClient
     }
 
     /// <inheritdoc />
-    public Task<EventResponse> GetEventAsync(string eventTicker, bool? withNestedMarkets = null, CancellationToken cancellationToken = default)
+    public async Task<EventResponse> GetEventAsync(string eventTicker, bool? withNestedMarkets = null, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventTicker);
 
@@ -40,7 +40,8 @@ internal sealed class EventClient : IEventClient
             Path = $"{BasePath}/{Uri.EscapeDataString(eventTicker)}{builder.Build()}"
         };
 
-        return _httpClient.SendAsync<EventResponse>(request, cancellationToken);
+        var response = await _httpClient.SendAsync<SingleEventResponse>(request, cancellationToken);
+        return response.Event;
     }
 
     /// <inheritdoc />
