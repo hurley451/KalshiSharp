@@ -76,19 +76,19 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "order_id": "order-12345",
-                    "ticker": "MARKET-ABC",
-                    "side": "yes",
-                    "type": "limit",
-                    "status": "resting",
-                    "action": "buy",
-                    "fill_count": 0,
-                    "initial_count": 10,
-                    "remaining_count": 10,
-                    "yes_price": 55,
-                    "no_price": 45,
-                    "time_in_force": "gtc",
-                    "created_time": 1704067200000
+                    "order": {
+                        "order_id": "order-12345",
+                        "ticker": "MARKET-ABC",
+                        "side": "yes",
+                        "type": "limit",
+                        "status": "resting",
+                        "action": "buy",
+                        "fill_count": 0,
+                        "initial_count": 10,
+                        "remaining_count": 10,
+                        "yes_price": 55,
+                        "no_price": 45
+                    }
                 }
                 """));
 
@@ -168,20 +168,34 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "order_id": "order-12345",
-                    "ticker": "MARKET-ABC",
-                    "side": "yes",
-                    "type": "limit",
-                    "status": "resting",
-                    "action": "buy",
-                    "fill_count": 0,
-                    "initial_count": 15,
-                    "remaining_count": 15,
-                    "yes_price": 60,
-                    "no_price": 40,
-                    "time_in_force": "gtc",
-                    "created_time": 1704067200000,
-                    "last_update_time": 1704067300000
+                    "old_order": {
+                        "order_id": "order-12345",
+                        "ticker": "MARKET-ABC",
+                        "side": "yes",
+                        "type": "limit",
+                        "status": "resting",
+                        "action": "buy",
+                        "fill_count": 0,
+                        "initial_count": 10,
+                        "remaining_count": 10,
+                        "yes_price": 55,
+                        "no_price": 45
+                    },
+                    "order": {
+                        "order_id": "order-12345",
+                        "ticker": "MARKET-ABC",
+                        "side": "yes",
+                        "type": "limit",
+                        "status": "resting",
+                        "action": "buy",
+                        "fill_count": 0,
+                        "initial_count": 15,
+                        "remaining_count": 15,
+                        "yes_price": 60,
+                        "no_price": 40,
+                        "created_time": "2024-01-01T00:00:00Z",
+                        "last_update_time": "2024-01-01T00:05:00Z"
+                    }
                 }
                 """));
 
@@ -196,10 +210,19 @@ public sealed class OrderClientTests : IDisposable
 
         // Assert
         result.Should().NotBeNull();
-        result.OrderId.Should().Be("order-12345");
-        result.InitialCount.Should().Be(15);
-        result.YesPrice.Should().Be(60);
-        result.LastUpdateTime.Should().NotBeNull();
+        result.OldOrder.Should().NotBeNull();
+        result.Order.Should().NotBeNull();
+        
+        // Verify old order
+        result.OldOrder.OrderId.Should().Be("order-12345");
+        result.OldOrder.InitialCount.Should().Be(10);
+        result.OldOrder.YesPrice.Should().Be(55);
+        
+        // Verify new order
+        result.Order.OrderId.Should().Be("order-12345");
+        result.Order.InitialCount.Should().Be(15);
+        result.Order.YesPrice.Should().Be(60);
+        result.Order.LastUpdateTime.Should().NotBeNull();
     }
 
     [Fact]
@@ -233,20 +256,19 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "order_id": "order-12345",
-                    "ticker": "MARKET-ABC",
-                    "side": "yes",
-                    "type": "limit",
-                    "status": "canceled",
-                    "action": "buy",
-                    "fill_count": 0,
-                    "initial_count": 10,
-                    "remaining_count": 10,
-                    "yes_price": 55,
-                    "no_price": 45,
-                    "time_in_force": "gtc",
-                    "created_time": 1704067200000,
-                    "last_update_time": 1704067200000
+                    "order": {
+                        "order_id": "order-12345",
+                        "ticker": "MARKET-ABC",
+                        "side": "yes",
+                        "type": "limit",
+                        "status": "canceled",
+                        "action": "buy",
+                        "fill_count": 0,
+                        "initial_count": 10,
+                        "remaining_count": 10,
+                        "yes_price": 55,
+                        "no_price": 45
+                    }
                 }
                 """));
 
@@ -299,21 +321,20 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "order_id": "order-12345",
-                    "client_order_id": "client-order-abc",
-                    "ticker": "MARKET-ABC",
-                    "side": "no",
-                    "type": "market",
-                    "status": "executed",
-                    "action": "sell",
-                    "fill_count": 5,
-                    "initial_count": 5,
-                    "remaining_count": 0,
-                    "yes_price": 45,
-                    "no_price": 55,
-                    "time_in_force": "ioc",
-                    "created_time": 1704067200000,
-                    "fees_paid": 10
+                    "order": {
+                        "order_id": "order-12345",
+                        "client_order_id": "client-order-abc",
+                        "ticker": "MARKET-ABC",
+                        "side": "no",
+                        "type": "market",
+                        "status": "executed",
+                        "action": "sell",
+                        "fill_count": 5,
+                        "initial_count": 5,
+                        "remaining_count": 0,
+                        "yes_price": 45,
+                        "no_price": 55
+                    }
                 }
                 """));
 
@@ -542,20 +563,20 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "order_id": "order-99999",
-                    "client_order_id": "my-custom-id",
-                    "ticker": "MARKET-TEST",
-                    "side": "yes",
-                    "type": "limit",
-                    "status": "resting",
-                    "action": "buy",
-                    "fill_count": 0,
-                    "initial_count": 1,
-                    "remaining_count": 1,
-                    "yes_price": 50,
-                    "no_price": 50,
-                    "time_in_force": "gtc",
-                    "created_time": 1704067200000
+                    "order": {
+                        "order_id": "order-99999",
+                        "client_order_id": "my-custom-id",
+                        "ticker": "MARKET-TEST",
+                        "side": "yes",
+                        "type": "limit",
+                        "status": "resting",
+                        "action": "buy",
+                        "fill_count": 0,
+                        "initial_count": 1,
+                        "remaining_count": 1,
+                        "yes_price": 50,
+                        "no_price": 50
+                    }
                 }
                 """));
 

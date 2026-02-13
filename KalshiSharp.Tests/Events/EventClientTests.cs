@@ -76,12 +76,14 @@ public sealed class EventClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "event_ticker": "AAPL-EVENT",
-                    "title": "Apple Stock Events",
-                    "category": "tech",
-                    "market_count": 5,
-                    "series_ticker": "TECH-SERIES",
-                    "collateral_return_type": "binary"
+                    "event": {
+                        "event_ticker": "AAPL-EVENT",
+                        "title": "Apple Stock Events",
+                        "category": "tech",
+                        "series_ticker": "TECH-SERIES",
+                        "collateral_return_type": "binary",
+                        "available_on_brokers": true
+                    }
                 }
                 """));
 
@@ -94,6 +96,8 @@ public sealed class EventClientTests : IDisposable
         result.Title.Should().Be("Apple Stock Events");
         result.Category.Should().Be("tech");        
         result.SeriesTicker.Should().Be("TECH-SERIES");
+        result.CollateralReturnType.Should().Be("binary");
+        result.AvailableOnBrokers.Should().BeTrue();
     }
 
     [Fact]
@@ -110,27 +114,28 @@ public sealed class EventClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "event_ticker": "AAPL-EVENT",
-                    "title": "Apple Stock Events",
-                    "category": "tech",
-                    "market_count": 1,
-                    "markets": [
-                        {
-                            "ticker": "AAPL-MARKET-1",
-                            "event_ticker": "AAPL-EVENT",
-                            "title": "Will Apple reach $200?",
-                            "status": "active",
-                            "yes_bid": 55,
-                            "yes_ask": 57,
-                            "no_bid": 43,
-                            "no_ask": 45,
-                            "volume": 10000,
-                            "volume24_h": 500,
-                            "open_interest": 2500,
-                            "can_close_early": true
-                        }
-                    ],                
-                    "collateral_return_type": "binary"
+                    "event": {
+                        "event_ticker": "AAPL-EVENT",
+                        "title": "Apple Stock Events",
+                        "category": "tech",
+                        "markets": [
+                            {
+                                "ticker": "AAPL-MARKET-1",
+                                "event_ticker": "AAPL-EVENT",
+                                "title": "Will Apple reach $200?",
+                                "status": "active",
+                                "yes_bid": 55,
+                                "yes_ask": 57,
+                                "no_bid": 43,
+                                "no_ask": 45,
+                                "volume": 10000,
+                                "volume24_h": 500,
+                                "open_interest": 2500,
+                                "can_close_early": true
+                            }
+                        ],                
+                        "collateral_return_type": "binary"
+                    }
                 }
                 """));
 
@@ -190,14 +195,12 @@ public sealed class EventClientTests : IDisposable
                             "event_ticker": "EVENT-1",
                             "title": "Event 1",
                             "category": "politics",
-                            "market_count": 3,                
                             "collateral_return_type": "binary"
                         },
                         {
                             "event_ticker": "EVENT-2",
                             "title": "Event 2",
                             "category": "economics",
-                            "market_count": 2,                
                             "collateral_return_type": "binary"
                         }
                     ],
@@ -273,7 +276,6 @@ public sealed class EventClientTests : IDisposable
                             "event_ticker": "EVENT-3",
                             "title": "Event 3",
                             "category": "sports",
-                            "market_count": 1,
                             "collateral_return_type": "binary"
                         }
                     ],
@@ -311,7 +313,6 @@ public sealed class EventClientTests : IDisposable
                             "event_ticker": "EVENT-1",
                             "title": "Event 1",
                             "category": "politics",
-                            "market_count": 1,
                             "markets": [
                                 {
                                     "ticker": "MARKET-1",
@@ -362,11 +363,12 @@ public sealed class EventClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "event_ticker": "EVENT-TEST-2024",
-                    "title": "Test Event",
-                    "category": "test",
-                    "market_count": 0,
-                    "collateral_return_type": "binary"
+                    "event": {
+                        "event_ticker": "EVENT-TEST-2024",
+                        "title": "Test Event",
+                        "category": "test",
+                        "collateral_return_type": "binary"
+                    }
                 }
                 """));
 

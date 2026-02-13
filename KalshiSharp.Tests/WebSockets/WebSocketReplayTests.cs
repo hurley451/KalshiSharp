@@ -577,6 +577,148 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Messages_ReceivesMarketPositionUpdate()
+    {
+        // Arrange
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        var positionJson = """
+            {
+                "type": "market_position",
+                "seq": 5678,
+                "msg": {
+                    "user_id": "user-123",
+                    "market_ticker": "MARKET-ABC",
+                    "position": 100,
+                    "position_fp": "100.00",
+                    "position_cost": 550000,
+                    "realized_pnl": 50000,
+                    "fees_paid": 5000,
+                    "position_fee_cost": 5000,
+                    "volume": 200,
+                    "volume_fp": "200.00",
+                    "subaccount": 0
+                }
+            }
+            """;
+
+        _mockConnection.EnqueueMessage(positionJson);
+
+        // Act
+        var messages = new List<WebSocketMessage>();
+        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+
+        try
+        {
+            await foreach (var msg in _client.Messages.WithCancellation(cts.Token))
+            {
+                messages.Add(msg);
+                if (messages.Count >= 1)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        // Assert
+        var positionUpdate = messages[0].Should().BeOfType<MarketPositionUpdate>().Subject;
+        positionUpdate.Message.UserId.Should().Be("user-123");
+        positionUpdate.Message.MarketTicker.Should().Be("MARKET-ABC");
+        positionUpdate.Message.Position.Should().Be(100);
+        positionUpdate.Message.PositionFp.Should().Be("100.00");
+        positionUpdate.Message.PositionCost.Should().Be(550000);
+        positionUpdate.Message.RealizedPnl.Should().Be(50000);
+        positionUpdate.Message.FeesPaid.Should().Be(5000);
+        positionUpdate.Message.PositionFeeCost.Should().Be(5000);
+        positionUpdate.Message.Volume.Should().Be(200);
+        positionUpdate.Message.VolumeFp.Should().Be("200.00");
+        positionUpdate.Message.Subaccount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Messages_ReceivesFillUpdate()
+    {
+        // Arrange
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        var fillJson = """
+            {
+                "type": "fill",
+                "seq": 9999,
+                "msg": {
+                    "trade_id": "trade-789",
+                    "order_id": "order-456",
+                    "market_ticker": "MARKET-XYZ",
+                    "is_taker": true,
+                    "side": "yes",
+                    "yes_price": 65,
+                    "yes_price_dollars": "0.6500",
+                    "count": 10,
+                    "count_fp": "10.00",
+                    "fee_cost": "0.0050",
+                    "action": "buy",
+                    "ts": 1704067200,
+                    "client_order_id": "client-order-123",
+                    "post_position": 110,
+                    "post_position_fp": "110.00",
+                    "purchased_side": "yes",
+                    "subaccount": 0
+                }
+            }
+            """;
+
+        _mockConnection.EnqueueMessage(fillJson);
+
+        // Act
+        var messages = new List<WebSocketMessage>();
+        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+
+        try
+        {
+            await foreach (var msg in _client.Messages.WithCancellation(cts.Token))
+            {
+                messages.Add(msg);
+                if (messages.Count >= 1)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        // Assert
+        var fillUpdate = messages[0].Should().BeOfType<FillUpdate>().Subject;
+        fillUpdate.Message.TradeId.Should().Be("trade-789");
+        fillUpdate.Message.OrderId.Should().Be("order-456");
+        fillUpdate.Message.MarketTicker.Should().Be("MARKET-XYZ");
+        fillUpdate.Message.IsTaker.Should().BeTrue();
+        fillUpdate.Message.Side.Should().Be(OrderSide.Yes);
+        fillUpdate.Message.YesPrice.Should().Be(65);
+        fillUpdate.Message.YesPriceDollars.Should().Be("0.6500");
+        fillUpdate.Message.Count.Should().Be(10);
+        fillUpdate.Message.CountFp.Should().Be("10.00");
+        fillUpdate.Message.FeeCost.Should().Be("0.0050");
+        fillUpdate.Message.Action.Should().Be("buy");
+        fillUpdate.Message.Ts.Should().Be(1704067200);
+        fillUpdate.Message.ClientOrderId.Should().Be("client-order-123");
+        fillUpdate.Message.PostPosition.Should().Be(110);
+        fillUpdate.Message.PostPositionFp.Should().Be("110.00");
+        fillUpdate.Message.PurchasedSide.Should().Be(OrderSide.Yes);
+        fillUpdate.Message.Subaccount.Should().Be(0);
+        fillUpdate.Message.NoPrice.Should().Be(35); // 100 - 65
+        fillUpdate.Message.FillPrice.Should().Be(65); // Yes side, so YesPrice
+    }
+
+    [Fact]
     public async Task StateChanged_EventRaised_OnStateChange()
     {
         // Arrange
@@ -623,19 +765,22 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         // Arrange
         var json = """
             {
-                "type": "order",
+                "type": "user_order",
                 "seq": 100,
-                "ts": 1704067200000,
-                "order_id": "order-456",
-                "market_ticker": "MARKET-ABC",
-                "side": "yes",
-                "order_type": "limit",
-                "action": "place",
-                "status": "resting",
-                "count": 50,
-                "remaining_count": 25,
-                "yes_price": 55,
-                "no_price": 45
+                "msg": {
+                    "order_id": "order-456",
+                    "user_id": "user-123",
+                    "ticker": "MARKET-ABC",
+                    "status": "resting",
+                    "side": "yes",
+                    "yes_price_dollars": "0.5500",
+                    "fill_count_fp": "25.00",
+                    "remaining_count_fp": "25.00",
+                    "initial_count_fp": "50.00",
+                    "self_trade_prevention_type": "cancel_resting",
+                    "created_time": "2024-01-01T00:00:00Z",
+                    "last_update_time": "2024-01-01T00:00:00Z"
+                }
             }
             """;
 
@@ -644,14 +789,15 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         // Assert
         var orderUpdate = message.Should().BeOfType<OrderUpdate>().Subject;
-        orderUpdate.OrderId.Should().Be("order-456");
-        orderUpdate.MarketTicker.Should().Be("MARKET-ABC");
-        orderUpdate.Side.Should().Be(OrderSide.Yes);
-        orderUpdate.Action.Should().Be("place");
-        orderUpdate.Status.Should().Be(OrderStatus.Resting);
-        orderUpdate.RemainingCount.Should().Be(25);
-        orderUpdate.YesPrice.Should().Be(55);
-        orderUpdate.FilledCount.Should().Be(25);
+        orderUpdate.Message.OrderId.Should().Be("order-456");
+        orderUpdate.Message.UserId.Should().Be("user-123");
+        orderUpdate.Message.Ticker.Should().Be("MARKET-ABC");
+        orderUpdate.Message.Side.Should().Be(OrderSide.Yes);
+        orderUpdate.Message.Status.Should().Be(OrderStatus.Resting);
+        orderUpdate.Message.YesPriceDollars.Should().Be("0.5500");
+        orderUpdate.Message.FillCountFp.Should().Be("25.00");
+        orderUpdate.Message.RemainingCountFp.Should().Be("25.00");
+        orderUpdate.Message.InitialCountFp.Should().Be("50.00");
     }
 
     /// <summary>
