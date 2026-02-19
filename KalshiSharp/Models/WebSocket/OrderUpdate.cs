@@ -104,7 +104,6 @@ public sealed record OrderUpdate : WebSocketMessage
     [JsonPropertyName("expiration_time")]
     public long? ExpirationTimeMs { get; init; }
 
-
     /// <summary>
     /// Gets the order expiration time as a DateTimeOffset.
     /// </summary>
