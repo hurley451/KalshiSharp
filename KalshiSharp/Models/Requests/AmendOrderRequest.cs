@@ -1,3 +1,5 @@
+using KalshiSharp.Models.Enums;
+
 namespace KalshiSharp.Models.Requests;
 
 /// <summary>
@@ -10,9 +12,29 @@ namespace KalshiSharp.Models.Requests;
 public sealed record AmendOrderRequest
 {
     /// <summary>
-    /// The new price in cents (1-99).
+    /// Market ticker.
     /// </summary>
-    public int? Price { get; init; }
+    public required string Ticker { get; init; }
+
+    /// <summary>
+    /// Side of the order.
+    /// </summary>
+    public required OrderSide Side { get; init; }
+
+    /// <summary>
+    /// Action of the order
+    /// </summary>
+    public required string Action { get; init; }
+
+    /// <summary>
+    /// Updated yes price for the order in cents
+    /// </summary>
+    public int? YesPrice { get; init; }
+
+    /// <summary>
+    /// Update yes price for the order in cents
+    /// </summary>
+    public int? NoPrice { get; init; }
 
     /// <summary>
     /// The new quantity (total contracts).

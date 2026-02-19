@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace KalshiSharp.Models.Responses;
 
 /// <summary>
@@ -16,9 +18,9 @@ public sealed record EventResponse
     public required string Title { get; init; }
 
     /// <summary>
-    /// Subtitle providing additional context.
+    /// SubTitle providing additional context.
     /// </summary>
-    public string? Subtitle { get; init; }
+    public string? SubTitle { get; init; }
 
     /// <summary>
     /// Category this event belongs to.
@@ -36,17 +38,29 @@ public sealed record EventResponse
     public IReadOnlyList<MarketResponse>? Markets { get; init; }
 
     /// <summary>
-    /// When this event was created.
-    /// </summary>
-    public DateTimeOffset? CreatedTime { get; init; }
-
-    /// <summary>
-    /// When this event closes.
-    /// </summary>
-    public DateTimeOffset? CloseTime { get; init; }
-
-    /// <summary>
     /// Series ticker if this event is part of a series.
     /// </summary>
     public string? SeriesTicker { get; init; }
+
+    /// <summary>
+    /// Specifies how collateral is returned when markets settle (e.g., 'binary' for standard yes/no markets).
+    /// </summary>
+    public required string CollateralReturnType { get; init; }
+
+    /// <summary>
+    /// Whether this event is available to trade on brokers. 
+    /// </summary>
+    public bool AvailableOnBrokers { get; init; }
+
+    /// <summary>
+    /// The specific date this event is based on. 
+    /// Only filled when the event uses a date strike (mutually exclusive with strike_period).
+    /// </summary>
+    public DateTimeOffset? StrikeDate { get; init; }
+
+    /// <summary>
+    /// The time period this event covers (e.g., 'week', 'month'). 
+    /// Only filled when the event uses a period strike (mutually exclusive with strike_date).
+    /// </summary>
+    public string? StrikePeriod { get; init; }
 }

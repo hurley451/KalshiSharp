@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
+using System.Globalization;
 
 namespace KalshiSharp.Tests.WebSockets;
 
@@ -178,11 +179,14 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
                 "type": "orderbook_delta",
                 "seq": 12345,
-                "ts": 1704067200000,
-                "market_ticker": "MARKET-ABC",
-                "price": 50,
-                "delta": 100,
-                "side": "yes"
+                "msg" : {
+                  "ts": 1704067200000,
+                  "market_ticker": "MARKET-ABC",
+                  "market_id": "6F31765E-D070-41B9-A6EA-6AF3274B362B",
+                  "price": 50,
+                  "delta": 100,
+                  "side": "yes"
+                }
             }
             """;
 
@@ -211,11 +215,11 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         // Assert
         messages.Should().HaveCount(1);
         var update = messages[0].Should().BeOfType<OrderBookUpdate>().Subject;
-        update.MarketTicker.Should().Be("MARKET-ABC");
-        update.Price.Should().Be(50);
-        update.Delta.Should().Be(100);
-        update.Side.Should().Be("yes");
-        update.IsYesSide.Should().BeTrue();
+        update.Message.MarketTicker.Should().Be("MARKET-ABC");
+        update.Message.Price.Should().Be(50);
+        update.Message.Delta!.Should().Be(100);
+        update.Message.Side!.Should().Be("yes");
+        update.Message.IsYesSide!.Should().BeTrue();
         update.Sequence.Should().Be(12345);
     }
 
@@ -227,11 +231,14 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         await _client.ConnectAsync();
 
         var snapshotJson = """
-            {
+            {                
                 "type": "orderbook_snapshot",
-                "market_ticker": "MARKET-ABC",
-                "yes": [[50, 100], [51, 200]],
-                "no": [[49, 150]]
+                "msg": {
+                 "market_id": "6F31765E-D070-41B9-A6EA-6AF3274B362B",
+                 "market_ticker": "MARKET-ABC",
+                 "yes": [[50, 100], [51, 200]],
+                 "no": [[49, 150]]
+                }
             }
             """;
 
@@ -258,10 +265,10 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         }
 
         // Assert
-        var snapshot = messages[0].Should().BeOfType<OrderBookSnapshotMessage>().Subject;
-        snapshot.MarketTicker.Should().Be("MARKET-ABC");
-        snapshot.Yes.Should().HaveCount(2);
-        snapshot.No.Should().HaveCount(1);
+        var snapshot = messages[0].Should().BeOfType<OrderBookSnapshot>().Subject;
+        snapshot.Message.MarketTicker.Should().Be("MARKET-ABC");
+        snapshot.Message.Yes!.Should().HaveCount(2);
+        snapshot.Message.No!.Should().HaveCount(1);
     }
 
     [Fact]
@@ -275,14 +282,17 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
                 "type": "trade",
                 "seq": 999,
-                "ts": 1704067200000,
-                "market_ticker": "MARKET-XYZ",
-                "trade_id": "trade-123",
-                "side": "yes",
-                "count": 50,
-                "yes_price": 65,
-                "no_price": 35,
-                "taker_side": "yes"
+                "msg": {
+                    "ts": 1704067200000,
+                    "market_ticker": "MARKET-XYZ",
+                    "market_id": "6F31765E-D070-41B9-A6EA-6AF3274B362B",
+                    "trade_id": "trade-123",
+                    "side": "yes",
+                    "count": 50,
+                    "yes_price": 65,
+                    "no_price": 35,
+                    "taker_side": "yes"
+                }
             }
             """;
 
@@ -310,50 +320,10 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         // Assert
         var trade = messages[0].Should().BeOfType<TradeUpdate>().Subject;
-        trade.MarketTicker.Should().Be("MARKET-XYZ");
-        trade.TradeId.Should().Be("trade-123");
-        trade.Count.Should().Be(50);
-        trade.YesPrice.Should().Be(65);
-    }
-
-    [Fact]
-    public async Task Messages_ReceivesHeartbeat()
-    {
-        // Arrange
-        _mockConnection.SetupConnect();
-        await _client.ConnectAsync();
-
-        var heartbeatJson = """
-            {
-                "type": "heartbeat",
-                "ts": 1704067200000
-            }
-            """;
-
-        _mockConnection.EnqueueMessage(heartbeatJson);
-
-        // Act
-        var messages = new List<WebSocketMessage>();
-        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-
-        try
-        {
-            await foreach (var msg in _client.Messages.WithCancellation(cts.Token))
-            {
-                messages.Add(msg);
-                if (messages.Count >= 1)
-                {
-                    break;
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected
-        }
-
-        // Assert
-        messages[0].Should().BeOfType<HeartbeatMessage>();
+        trade.Message.MarketTicker!.Should().Be("MARKET-XYZ");
+        trade.Message.TradeId!.Should().Be("trade-123");
+        trade.Message.Count!.Should().Be(50);
+        trade.Message.YesPrice!.Should().Be(65);
     }
 
     [Fact]
@@ -366,8 +336,9 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         var confirmJson = """
             {
                 "type": "subscribed",
-                "channel": "orderbook_delta",
-                "markets": ["MARKET-ABC", "MARKET-XYZ"]
+                "msg": {
+                  "channel": "orderbook_delta"
+                }
             }
             """;
 
@@ -395,8 +366,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         // Assert
         var confirm = messages[0].Should().BeOfType<SubscriptionConfirmation>().Subject;
-        confirm.Channel.Should().Be("orderbook_delta");
-        confirm.Markets.Should().Contain("MARKET-ABC");
+        confirm.Message.Channel!.Should().Be("orderbook_delta");
     }
 
     [Fact]
@@ -408,9 +378,11 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         var errorJson = """
             {
-                "type": "error",
-                "code": "invalid_subscription",
-                "msg": "Market not found"
+                "type": "error",                
+                "msg": {
+                    "code": 100,
+                    "msg": "Market not found"
+                }
             }
             """;
 
@@ -438,8 +410,8 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         // Assert
         var error = messages[0].Should().BeOfType<ErrorMessage>().Subject;
-        error.Code.Should().Be("invalid_subscription");
-        error.Message.Should().Be("Market not found");
+        error.Message.Code.Should().Be(100);
+        error.Message.ErrorMessage.Should().Be("Market not found");
     }
 
     [Fact]
@@ -482,6 +454,268 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         var unknown = messages[0].Should().BeOfType<UnknownMessage>().Subject;
         unknown.RawType.Should().Be("future_feature");
         unknown.RawPayload.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Messages_ReceivesOkMessage()
+    {
+        // Arrange
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        var okJson = """
+            {
+                "type": "ok",
+                "id": 123,
+                "seq": 999,
+                "market_tickers": ["MARKET-ABC", "MARKET-XYZ"],
+                "market_ids": ["6F31765E-D070-41B9-A6EA-6AF3274B362B", "7A42876F-E181-52CA-B7FB-7BG4385C473C"]
+            }
+            """;
+
+        _mockConnection.EnqueueMessage(okJson);
+
+        // Act
+        var messages = new List<WebSocketMessage>();
+        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+
+        try
+        {
+            await foreach (var msg in _client.Messages.WithCancellation(cts.Token))
+            {
+                messages.Add(msg);
+                if (messages.Count >= 1)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        // Assert
+        var okMessage = messages[0].Should().BeOfType<OKMessage>().Subject;
+        okMessage.Id.Should().Be(123);
+        okMessage.Seq.Should().Be(999);
+        okMessage.MarketTickers.Should().NotBeNull();
+        okMessage.MarketTickers!.Should().HaveCount(2);
+        okMessage.MarketTickers![0].Should().Be("MARKET-ABC");
+        okMessage.MarketTickers![1].Should().Be("MARKET-XYZ");
+        okMessage.MarketIds.Should().NotBeNull();
+        okMessage.MarketIds!.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Messages_ReceivesTickerUpdate()
+    {
+        // Arrange
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        var tickerJson = """
+            {
+                "type": "ticker",
+                "seq": 1234,
+                "msg": {
+                    "market_ticker": "MARKET-ABC",
+                    "market_id": "6F31765E-D070-41B9-A6EA-6AF3274B362B",
+                    "price": 55,
+                    "yes_bid": 54,
+                    "yes_ask": 56,
+                    "price_dollars": "0.55",
+                    "yes_bid_dollars": "0.54",
+                    "yes_ask_dollars": "0.56",
+                    "volume": 10000,
+                    "volume_fp": 10000.00,
+                    "open_interest": 5000,
+                    "open_interest_fp": 5000.00,
+                    "ts": 1771526292,
+                    "time": "2026-02-19T18:38:12.398904Z",
+                    "dollar_volume": 5500,
+                    "dollar_open_interest": 2750
+                }
+            }
+            """;
+
+        _mockConnection.EnqueueMessage(tickerJson);
+
+        // Act
+        var messages = new List<WebSocketMessage>();
+        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+
+        try
+        {
+            await foreach (var msg in _client.Messages.WithCancellation(cts.Token))
+            {
+                messages.Add(msg);
+                if (messages.Count >= 1)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        // Assert
+        var tickerUpdate = messages[0].Should().BeOfType<TickerUpdate>().Subject;
+        tickerUpdate.Message.MarketTicker.Should().Be("MARKET-ABC");
+        tickerUpdate.Message.MarketId.Should().Be(Guid.Parse("6F31765E-D070-41B9-A6EA-6AF3274B362B"));
+        tickerUpdate.Message.Price.Should().Be(55);
+        tickerUpdate.Message.YesBid.Should().Be(54);
+        tickerUpdate.Message.YesAsk.Should().Be(56);
+        tickerUpdate.Message.Volume.Should().Be(10000);
+        tickerUpdate.Message.OpenInterest.Should().Be(5000);
+        tickerUpdate.Message.TimeStamp.Should().Be(1771526292);
+        tickerUpdate.Message.Time.Should().Be(DateTimeOffset.Parse("2026-02-19T18:38:12.398904Z", CultureInfo.InvariantCulture));
+        tickerUpdate.Message.NoBid.Should().Be(44);
+        tickerUpdate.Message.NoAsk.Should().Be(46);
+    }
+
+    [Fact]
+    public async Task Messages_ReceivesMarketPositionUpdate()
+    {
+        // Arrange
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        var positionJson = """
+            {
+                "type": "market_position",
+                "seq": 5678,
+                "msg": {
+                    "user_id": "user-123",
+                    "market_ticker": "MARKET-ABC",
+                    "position": 100,
+                    "position_fp": "100.00",
+                    "position_cost": 550000,
+                    "realized_pnl": 50000,
+                    "fees_paid": 5000,
+                    "position_fee_cost": 5000,
+                    "volume": 200,
+                    "volume_fp": "200.00",
+                    "subaccount": 0
+                }
+            }
+            """;
+
+        _mockConnection.EnqueueMessage(positionJson);
+
+        // Act
+        var messages = new List<WebSocketMessage>();
+        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+
+        try
+        {
+            await foreach (var msg in _client.Messages.WithCancellation(cts.Token))
+            {
+                messages.Add(msg);
+                if (messages.Count >= 1)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        // Assert
+        var positionUpdate = messages[0].Should().BeOfType<MarketPositionUpdate>().Subject;
+        positionUpdate.Message.UserId.Should().Be("user-123");
+        positionUpdate.Message.MarketTicker.Should().Be("MARKET-ABC");
+        positionUpdate.Message.Position.Should().Be(100);
+        positionUpdate.Message.PositionFp.Should().Be("100.00");
+        positionUpdate.Message.PositionCost.Should().Be(550000);
+        positionUpdate.Message.RealizedPnl.Should().Be(50000);
+        positionUpdate.Message.FeesPaid.Should().Be(5000);
+        positionUpdate.Message.PositionFeeCost.Should().Be(5000);
+        positionUpdate.Message.Volume.Should().Be(200);
+        positionUpdate.Message.VolumeFp.Should().Be("200.00");
+        positionUpdate.Message.Subaccount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Messages_ReceivesFillUpdate()
+    {
+        // Arrange
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        var fillJson = """
+            {
+                "type": "fill",
+                "seq": 9999,
+                "msg": {
+                    "trade_id": "trade-789",
+                    "order_id": "order-456",
+                    "market_ticker": "MARKET-XYZ",
+                    "is_taker": true,
+                    "side": "yes",
+                    "yes_price": 65,
+                    "yes_price_dollars": "0.6500",
+                    "count": 10,
+                    "count_fp": "10.00",
+                    "fee_cost": "0.0050",
+                    "action": "buy",
+                    "ts": 1704067200,
+                    "client_order_id": "client-order-123",
+                    "post_position": 110,
+                    "post_position_fp": "110.00",
+                    "purchased_side": "yes",
+                    "subaccount": 0
+                }
+            }
+            """;
+
+        _mockConnection.EnqueueMessage(fillJson);
+
+        // Act
+        var messages = new List<WebSocketMessage>();
+        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+
+        try
+        {
+            await foreach (var msg in _client.Messages.WithCancellation(cts.Token))
+            {
+                messages.Add(msg);
+                if (messages.Count >= 1)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        // Assert
+        var fillUpdate = messages[0].Should().BeOfType<FillUpdate>().Subject;
+        fillUpdate.Message.TradeId.Should().Be("trade-789");
+        fillUpdate.Message.OrderId.Should().Be("order-456");
+        fillUpdate.Message.MarketTicker.Should().Be("MARKET-XYZ");
+        fillUpdate.Message.IsTaker.Should().BeTrue();
+        fillUpdate.Message.Side.Should().Be(OrderSide.Yes);
+        fillUpdate.Message.YesPrice.Should().Be(65);
+        fillUpdate.Message.YesPriceDollars.Should().Be("0.6500");
+        fillUpdate.Message.Count.Should().Be(10);
+        fillUpdate.Message.CountFp.Should().Be("10.00");
+        fillUpdate.Message.FeeCost.Should().Be("0.0050");
+        fillUpdate.Message.Action.Should().Be("buy");
+        fillUpdate.Message.Ts.Should().Be(1704067200);
+        fillUpdate.Message.ClientOrderId.Should().Be("client-order-123");
+        fillUpdate.Message.PostPosition.Should().Be(110);
+        fillUpdate.Message.PostPositionFp.Should().Be("110.00");
+        fillUpdate.Message.PurchasedSide.Should().Be(OrderSide.Yes);
+        fillUpdate.Message.Subaccount.Should().Be(0);
+        fillUpdate.Message.NoPrice.Should().Be(35); // 100 - 65
+        fillUpdate.Message.FillPrice.Should().Be(65); // Yes side, so YesPrice
     }
 
     [Fact]
@@ -531,19 +765,22 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         // Arrange
         var json = """
             {
-                "type": "order",
+                "type": "user_order",
                 "seq": 100,
-                "ts": 1704067200000,
-                "order_id": "order-456",
-                "market_ticker": "MARKET-ABC",
-                "side": "yes",
-                "order_type": "limit",
-                "action": "place",
-                "status": "resting",
-                "count": 50,
-                "remaining_count": 25,
-                "yes_price": 55,
-                "no_price": 45
+                "msg": {
+                    "order_id": "order-456",
+                    "user_id": "user-123",
+                    "ticker": "MARKET-ABC",
+                    "status": "resting",
+                    "side": "yes",
+                    "yes_price_dollars": "0.5500",
+                    "fill_count_fp": "25.00",
+                    "remaining_count_fp": "25.00",
+                    "initial_count_fp": "50.00",
+                    "self_trade_prevention_type": "cancel_resting",
+                    "created_time": "2024-01-01T00:00:00Z",
+                    "last_update_time": "2024-01-01T00:00:00Z"
+                }
             }
             """;
 
@@ -552,14 +789,15 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         // Assert
         var orderUpdate = message.Should().BeOfType<OrderUpdate>().Subject;
-        orderUpdate.OrderId.Should().Be("order-456");
-        orderUpdate.MarketTicker.Should().Be("MARKET-ABC");
-        orderUpdate.Side.Should().Be(OrderSide.Yes);
-        orderUpdate.Action.Should().Be("place");
-        orderUpdate.Status.Should().Be(OrderStatus.Resting);
-        orderUpdate.RemainingCount.Should().Be(25);
-        orderUpdate.YesPrice.Should().Be(55);
-        orderUpdate.FilledCount.Should().Be(25);
+        orderUpdate.Message.OrderId.Should().Be("order-456");
+        orderUpdate.Message.UserId.Should().Be("user-123");
+        orderUpdate.Message.Ticker.Should().Be("MARKET-ABC");
+        orderUpdate.Message.Side.Should().Be(OrderSide.Yes);
+        orderUpdate.Message.Status.Should().Be(OrderStatus.Resting);
+        orderUpdate.Message.YesPriceDollars.Should().Be("0.5500");
+        orderUpdate.Message.FillCountFp.Should().Be("25.00");
+        orderUpdate.Message.RemainingCountFp.Should().Be("25.00");
+        orderUpdate.Message.InitialCountFp.Should().Be("50.00");
     }
 
     /// <summary>
