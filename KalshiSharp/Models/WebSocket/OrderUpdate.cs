@@ -104,6 +104,7 @@ public sealed record OrderUpdate : WebSocketMessage
     [JsonPropertyName("expiration_time")]
     public long? ExpirationTimeMs { get; init; }
 
+
     /// <summary>
     /// Gets the order expiration time as a DateTimeOffset.
     /// </summary>
@@ -111,6 +112,13 @@ public sealed record OrderUpdate : WebSocketMessage
     public DateTimeOffset? ExpirationTime => ExpirationTimeMs.HasValue
         ? DateTimeOffset.FromUnixTimeMilliseconds(ExpirationTimeMs.Value)
         : null;
+
+    /// <summary>
+    /// Self-trade prevention type.
+    /// </summary>
+    [JsonPropertyName("self_trade_prevention_type")]
+    public string? SelfTradePreventionType { get; init; }
+
 
     /// <summary>
     /// Reason for order cancellation or rejection.
