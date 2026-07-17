@@ -1,3 +1,4 @@
+using KalshiSharp.Models.Enums;
 using KalshiSharp.Models.Responses;
 
 namespace KalshiSharp.Rest.Portfolio;
@@ -37,6 +38,9 @@ public interface IPortfolioClient
     /// <param name="limit">Maximum number of fills to return.</param>
     /// <param name="ticker">Optional market ticker filter.</param>
     /// <param name="orderId">Optional order ID filter.</param>
+    /// <param name="minTs">Optional minimum fill time filter (Unix timestamp).</param>
+    /// <param name="maxTs">Optional maximum fill time filter (Unix timestamp).</param>
+    /// <param name="side">Optional side filter.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A paged list of fills.</returns>
     Task<FillsResponse> ListFillsAsync(
@@ -44,5 +48,8 @@ public interface IPortfolioClient
         int? limit = null,
         string? ticker = null,
         string? orderId = null,
+        DateTimeOffset? minTs = null,
+        DateTimeOffset? maxTs = null,
+        OrderSide? side = null,
         CancellationToken cancellationToken = default);
 }

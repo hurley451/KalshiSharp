@@ -1,4 +1,5 @@
 using KalshiSharp.Http;
+using KalshiSharp.Models.Enums;
 using KalshiSharp.Models.Responses;
 
 namespace KalshiSharp.Rest.Portfolio;
@@ -58,9 +59,12 @@ internal sealed class PortfolioClient : IPortfolioClient
         int? limit = null,
         string? ticker = null,
         string? orderId = null,
+        DateTimeOffset? minTs = null,
+        DateTimeOffset? maxTs = null,
+        OrderSide? side = null,
         CancellationToken cancellationToken = default)
     {
-        var queryString = BuildFillsQueryString(cursor, limit, ticker, orderId);
+        var queryString = BuildFillsQueryString(cursor, limit, ticker, orderId, minTs, maxTs, side);
 
         var httpRequest = new KalshiRequest
         {
@@ -106,29 +110,33 @@ internal sealed class PortfolioClient : IPortfolioClient
         string? cursor,
         int? limit,
         string? ticker,
-        string? orderId)
+        string? orderId,
+        DateTimeOffset? minTs,
+        DateTimeOffset? maxTs,
+        OrderSide? side)
     {
         var parameters = new List<string>();
 
         if (!string.IsNullOrEmpty(cursor))
-        {
             parameters.Add($"cursor={Uri.EscapeDataString(cursor)}");
-        }
 
         if (limit.HasValue)
-        {
             parameters.Add($"limit={limit.Value}");
-        }
 
         if (!string.IsNullOrEmpty(ticker))
-        {
             parameters.Add($"ticker={Uri.EscapeDataString(ticker)}");
-        }
 
         if (!string.IsNullOrEmpty(orderId))
-        {
             parameters.Add($"order_id={Uri.EscapeDataString(orderId)}");
-        }
+
+        if (minTs.HasValue)
+            parameters.Add($"min_ts={minTs.Value.ToUnixTimeSeconds()}");
+
+        if (maxTs.HasValue)
+            parameters.Add($"max_ts={maxTs.Value.ToUnixTimeSeconds()}");
+
+        if (side.HasValue)
+            parameters.Add($"side={side.Value.ToString().ToLowerInvariant()}");
 
         return parameters.Count > 0 ? $"?{string.Join("&", parameters)}" : string.Empty;
     }
