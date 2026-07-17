@@ -15,7 +15,7 @@ public sealed record OrderSubscription : WebSocketSubscription
     /// <summary>
     /// Channel identifier for order updates.
     /// </summary>
-    public const string ChannelName = "order";
+    public const string ChannelName = "user_orders";
 
     /// <inheritdoc />
     public override string Channel => ChannelName;

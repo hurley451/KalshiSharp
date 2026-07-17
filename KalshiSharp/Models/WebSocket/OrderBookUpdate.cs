@@ -8,7 +8,7 @@ namespace KalshiSharp.Models.WebSocket;
 public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageBody>
 {
     /// <inheritdoc/>
-    public override string Type => "orderbook_delta";    
+    public override string MessageType => "orderbook_delta";    
 
     /// <summary>
     /// Sequential number that should be checked if you want to guarantee you received all the messages. Used for snapshot/delta consistency
@@ -30,6 +30,7 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
         [JsonPropertyName("market_id")]
         public required string MarketId { get; init; }
 
+        /*
         /// <summary>
         /// Price level for this update (1-99 cents).
         /// </summary>
@@ -42,6 +43,20 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
         /// </summary>
         [JsonPropertyName("delta")]
         public required int Delta { get; init; }
+        */
+
+        /// <summary>
+        /// Price level for this update in dollars.
+        /// </summary>
+        [JsonPropertyName("price_dollars")]
+        public required string PriceDollars { get; init; }
+
+        /// <summary>
+        /// Change in quantity at this price level - Fixed-point (2 decimals).
+        /// Positive = added, negative = removed.
+        /// </summary>
+        [JsonPropertyName("delta_fp")]
+        public required string DeltaFp { get; init; }
 
         /// <summary>
         /// Side of the order book: "yes" or "no".
@@ -93,7 +108,7 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
 public sealed record OrderBookSnapshot : WebSocketMessage<OrderBookSnapshot.MessageBody>
 {
     /// <inheritdoc/>
-    public override string Type => "orderbook_snapshot";
+    public override string MessageType => "orderbook_snapshot";
 
     /// <summary>
     /// Sequential number that should be checked if you want to guarantee you received all the messages. Used for snapshot/delta consistency
@@ -114,11 +129,19 @@ public sealed record OrderBookSnapshot : WebSocketMessage<OrderBookSnapshot.Mess
         [JsonPropertyName("market_id")]
         public required string MarketId { get; init; }
 
+        /*
         /// <summary>
         /// Bids on the Yes side. Each entry is [price, quantity].
         /// </summary>
         [JsonPropertyName("yes")]
         public IReadOnlyList<int[]>? Yes { get; init; }
+
+        /// <summary>
+        /// Bids on the No side. Each entry is [price, quantity].
+        /// </summary>
+        [JsonPropertyName("no")]
+        public IReadOnlyList<int[]>? No { get; init; }
+        */
 
         /// <summary>
         /// Bids on the Yes side. Each entry is [price, quantity].
@@ -133,12 +156,6 @@ public sealed record OrderBookSnapshot : WebSocketMessage<OrderBookSnapshot.Mess
         /// </summary>
         [JsonPropertyName("yes_dollars_fp")]
         public IReadOnlyList<decimal[]>? YesDollarsFp { get; init; }
-
-        /// <summary>
-        /// Bids on the No side. Each entry is [price, quantity].
-        /// </summary>
-        [JsonPropertyName("no")]
-        public IReadOnlyList<int[]>? No { get; init; }
 
         /// <summary>
         /// Bids on the No side. Each entry is [price, quantity].

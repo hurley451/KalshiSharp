@@ -361,18 +361,18 @@ static async Task WebSocketExample(string apiKey, string apiSecret)
                 {
                     case OrderBookSnapshot snapshot:
                         Console.WriteLine($"[OrderBook Snapshot] {snapshot.Message.MarketTicker}");
-                        Console.WriteLine($"  Yes levels: {snapshot.Message.Yes?.Count}");
-                        Console.WriteLine($"  No levels: {snapshot.Message.No?.Count}");
+                        Console.WriteLine($"  Yes levels: {snapshot.Message.YesDollars?.Count}");
+                        Console.WriteLine($"  No levels: {snapshot.Message.NoDollars?.Count}");
                         break;
 
                     case OrderBookUpdate update:
                         Console.WriteLine($"[OrderBook Delta] {update.Message.MarketTicker}");
-                        Console.WriteLine($"  Price: {update.Message.Price}, Delta: {update.Message.Delta}, Side: {update.Message.Side}");
+                        Console.WriteLine($"  Price: {update.Message.Price()}, Delta: {update.Message.Delta()}, Side: {update.Message.Side}");
                         break;
 
                     case TradeUpdate trade:
                         Console.WriteLine($"[Trade] {trade.Message.MarketTicker}");
-                        Console.WriteLine($"  Count: {trade.Message.Count}, Yes Price: {trade.Message.YesPrice}c");
+                        Console.WriteLine($"  Count: {trade.Message.Count()}, Yes Price: {trade.Message.YesPrice()}c");
                         break;                 
 
                     case UnknownMessage unknown:

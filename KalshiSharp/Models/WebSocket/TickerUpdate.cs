@@ -5,7 +5,7 @@ namespace KalshiSharp.Models.WebSocket
     public sealed record TickerUpdate : WebSocketMessage<TickerUpdate.MessageBody>
     {
         /// <inheritdoc/>        
-        public override string Type => "ticker";
+        public override string MessageType => "ticker";
 
         public sealed record MessageBody
         {
@@ -21,6 +21,7 @@ namespace KalshiSharp.Models.WebSocket
             [JsonPropertyName("market_id")]
             public Guid MarketId { get; init; }
 
+            /*
             /// <summary>
             /// Last traded price in cents (1-99)
             /// </summary>
@@ -40,46 +41,47 @@ namespace KalshiSharp.Models.WebSocket
             public int? YesAsk { get; init; }
 
             /// <summary>
-            /// Last traded price in dollars
-            /// </summary>
-            [JsonPropertyName("price_dollars")]
-            public string? PriceDollars { get; init; }
-
-            /// <summary>
-            /// Best ask price for yes side
-            /// </summary>
-            [JsonPropertyName("yes_bid_dollars")]
-            public string? YesBidDollars { get; init; }
-
-            /// <summary>
-            /// Best bid price for yes side in dollars
-            /// </summary>
-            [JsonPropertyName("yes_ask_dollars")]
-            public string? YesAskDollars { get; init; }
-
-            /// <summary>
             /// Number of individual contracts traded on the market so far. YES and NO count separately
             /// </summary>
             [JsonPropertyName("volume")]
             public int? Volume { get; init; }
 
             /// <summary>
-            /// Number of individual contracts traded on the market so far - Fixed-point. YES and NO count separately
-            /// </summary>
-            [JsonPropertyName("volume_fp")]
-            public decimal? VolumeFp { get; init; }
-
-            /// <summary>
             /// Number of active contracts in the market currently
             /// </summary>
             [JsonPropertyName("open_interest")]
             public int? OpenInterest { get; init; }
+            */
+
+            /// <summary>
+            /// Last traded price in dollars
+            /// </summary>
+            [JsonPropertyName("price_dollars")]
+            public string? PriceDollars { get; init; }
+
+            /// <summary>
+            /// Best bid price for yes side in dollars
+            /// </summary>
+            [JsonPropertyName("yes_bid_dollars")]
+            public string? YesBidDollars { get; init; }
+
+            /// <summary>
+            /// Best ask price for yes side in dollars
+            /// </summary>
+            [JsonPropertyName("yes_ask_dollars")]
+            public string? YesAskDollars { get; init; }
+
+            /// <summary>
+            /// Number of individual contracts traded on the market so far - Fixed-point. YES and NO count separately
+            /// </summary>
+            [JsonPropertyName("volume_fp")]
+            public string? VolumeFp { get; init; }
 
             /// <summary>
             /// Number of active contracts in the market currently - Fixed-point
             /// </summary>
             [JsonPropertyName("open_interest_fp")]
-            public decimal? OpenInterestFp { get; init; }
+            public string? OpenInterestFp { get; init; }
 
             /// <summary>
             /// Unix timestamp for when the update happened (in seconds)
@@ -104,18 +106,6 @@ namespace KalshiSharp.Models.WebSocket
             /// </summary>
             [JsonPropertyName("time")]
             public DateTimeOffset Time { get; init; }
-
-            /// <summary>
-            /// Calculated best bid price for no side
-            /// </summary>
-            [JsonIgnore]
-            public int? NoBid { get => 100 - YesAsk; }
-
-            /// <summary>
-            /// Calculated best ask price for no side.
-            /// </summary>
-            [JsonIgnore]
-            public int? NoAsk { get => 100 - YesBid;}
         }
     }
 }

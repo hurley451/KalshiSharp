@@ -9,7 +9,7 @@ namespace KalshiSharp.Models.WebSocket;
 public sealed record TradeUpdate : WebSocketMessage<TradeUpdate.MessageBody>
 {
     /// <inheritdoc/>
-    public override string Type => "trade";
+    public override string MessageType => "trade";
 
     public sealed record MessageBody
     {
@@ -31,6 +31,7 @@ public sealed record TradeUpdate : WebSocketMessage<TradeUpdate.MessageBody>
         [JsonPropertyName("side")]
         public required OrderSide Side { get; init; }
 
+        /*
         /// <summary>
         /// Price at which the trade executed (in cents).
         /// </summary>
@@ -48,6 +49,25 @@ public sealed record TradeUpdate : WebSocketMessage<TradeUpdate.MessageBody>
         /// </summary>
         [JsonPropertyName("count")]
         public required int Count { get; init; }
+        */
+
+        /// <summary>
+        /// Price at which the trade executed in dollars.
+        /// </summary>
+        [JsonPropertyName("yes_price_dollars")]
+        public required string YesPriceDollars { get; init; }
+
+        /// <summary>
+        /// No price in dollars (derived from yes price).
+        /// </summary>
+        [JsonPropertyName("no_price_dollars")]
+        public required string NoPriceDollars { get; init; }
+
+        /// <summary>
+        /// Number of contracts traded - Fixed-point (2 decimals).
+        /// </summary>
+        [JsonPropertyName("count_fp")]
+        public required string CountFp { get; init; }
 
         /// <summary>
         /// Taker side of the trade.

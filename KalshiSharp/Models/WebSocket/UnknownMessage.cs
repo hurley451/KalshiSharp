@@ -11,7 +11,7 @@ public sealed record UnknownMessage : WebSocketMessage
 {
     /// <inheritdoc/>
     [JsonPropertyName("type")]
-    public override string Type { get; } = "unknown";
+    public override string MessageType { get; } = "unknown";
 
     /// <summary>
     /// The raw message type received from the server.
