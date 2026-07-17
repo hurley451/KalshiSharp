@@ -1,4 +1,5 @@
 using KalshiSharp.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace KalshiSharp.Models.Requests;
 
@@ -20,27 +21,30 @@ public sealed record CreateOrderRequest
     /// <summary>
     /// The action to take (buy or sell).
     /// </summary>
-    public required string Action { get; init; }
+    public required string Action { get; init; }   
 
     /// <summary>
-    /// The number of contracts to buy/sell.
+    /// The number of contracts to buy/sell - Fixed-point (2 decimals).
     /// </summary>
-    public required int Count { get; init; }
+    [JsonPropertyName("count_fp")]
+    public required string CountFp { get; init; }
+
+    /// <summary>
+    /// The limit price in dollars. Required for limit orders on Yes side.
+    /// </summary>
+    [JsonPropertyName("yes_price_dollars")]
+    public string? YesPriceDollars { get; init; }
+
+    /// <summary>
+    /// The no price in dollars. Required for limit orders on No side.
+    /// </summary>
+    [JsonPropertyName("no_price_dollars")]
+    public string? NoPriceDollars { get; init; }
 
     /// <summary>
     /// The order type (Limit or Market).
     /// </summary>
     public required OrderType Type { get; init; }
-
-    /// <summary>
-    /// The limit price in cents (1-99). Required for limit orders.
-    /// </summary>
-    public int? YesPrice { get; init; }
-
-    /// <summary>
-    /// The no price in cents. Derived from yes price if not specified.
-    /// </summary>
-    public int? NoPrice { get; init; }
 
     /// <summary>
     /// Time in force for the order. Defaults to GTC.

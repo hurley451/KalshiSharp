@@ -1,3 +1,6 @@
+using KalshiSharp.Models.Enums;
+using System.Text.Json.Serialization;
+
 namespace KalshiSharp.Models.Requests;
 
 /// <summary>
@@ -10,12 +13,35 @@ namespace KalshiSharp.Models.Requests;
 public sealed record AmendOrderRequest
 {
     /// <summary>
-    /// The new price in cents (1-99).
+    /// Market ticker.
     /// </summary>
-    public int? Price { get; init; }
+    public required string Ticker { get; init; }
 
     /// <summary>
-    /// The new quantity (total contracts).
+    /// Side of the order.
     /// </summary>
-    public int? Count { get; init; }
+    public required OrderSide Side { get; init; }
+
+    /// <summary>
+    /// Action of the order
+    /// </summary>
+    public required string Action { get; init; }
+
+    /// <summary>
+    /// Updated yes price for the order in dollars
+    /// </summary>
+    [JsonPropertyName("yes_price_dollars")]
+    public string? YesPriceDollars { get; init; }
+
+    /// <summary>
+    /// Updated no price for the order in dollars
+    /// </summary>
+    [JsonPropertyName("no_price_dollars")]
+    public string? NoPriceDollars { get; init; }
+
+    /// <summary>
+    /// The new quantity (total contracts) - Fixed-point (2 decimals).
+    /// </summary>
+    [JsonPropertyName("count_fp")]
+    public string? CountFp { get; init; }
 }

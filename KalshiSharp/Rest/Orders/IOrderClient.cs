@@ -23,7 +23,7 @@ public interface IOrderClient
     /// <param name="request">The amendment request.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated order details.</returns>
-    Task<OrderResponse> AmendOrderAsync(string orderId, AmendOrderRequest request, CancellationToken cancellationToken = default);
+    Task<AmendOrderResponse> AmendOrderAsync(string orderId, AmendOrderRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Cancels an existing order.

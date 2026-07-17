@@ -1,4 +1,5 @@
 using KalshiSharp.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace KalshiSharp.Models.Responses;
 
@@ -48,84 +49,63 @@ public sealed record OrderResponse
     public required OrderStatus Status { get; init; }
 
     /// <summary>
-    /// Yes price in cents (1-99).
-    /// </summary>
-    public required int YesPrice { get; init; }
-
-    /// <summary>
-    /// No price in cents (derived from yes price).
-    /// </summary>
-    public required int NoPrice { get; init; }
-
-    /// <summary>
     /// Yes price in dollars (string representation).
     /// </summary>
+    [JsonPropertyName("yes_price_dollars")]
     public string? YesPriceDollars { get; init; }
 
     /// <summary>
     /// No price in dollars (string representation).
     /// </summary>
+    [JsonPropertyName("no_price_dollars")]
     public string? NoPriceDollars { get; init; }
 
     /// <summary>
-    /// Number of contracts filled.
+    /// Number of contracts filled - Fixed-point (2 decimals).
     /// </summary>
-    public required int FillCount { get; init; }
+    [JsonPropertyName("fill_count_fp")]
+    public string? FillCountFp { get; init; }
 
     /// <summary>
-    /// Quantity remaining (not yet filled).
+    /// Quantity remaining (not yet filled) - Fixed-point (2 decimals).
     /// </summary>
-    public required int RemainingCount { get; init; }
+    [JsonPropertyName("remaining_count_fp")]
+    public string? RemainingCountFp { get; init; }
 
     /// <summary>
-    /// Initial quantity ordered.
+    /// Initial quantity ordered - Fixed-point (2 decimals).
     /// </summary>
-    public required int InitialCount { get; init; }
-
-    /// <summary>
-    /// Taker fees in cents.
-    /// </summary>
-    public int? TakerFees { get; init; }
-
-    /// <summary>
-    /// Maker fees in cents.
-    /// </summary>
-    public int? MakerFees { get; init; }
-
-    /// <summary>
-    /// Taker fill cost in cents.
-    /// </summary>
-    public int? TakerFillCost { get; init; }
-
-    /// <summary>
-    /// Maker fill cost in cents.
-    /// </summary>
-    public int? MakerFillCost { get; init; }
+    [JsonPropertyName("initial_count_fp")]
+    public string? InitialCountFp { get; init; }
 
     /// <summary>
     /// Taker fill cost in dollars (string representation).
     /// </summary>
+    [JsonPropertyName("taker_fill_cost_dollars")]
     public string? TakerFillCostDollars { get; init; }
 
     /// <summary>
     /// Maker fill cost in dollars (string representation).
     /// </summary>
+    [JsonPropertyName("maker_fill_cost_dollars")]
     public string? MakerFillCostDollars { get; init; }
-
-    /// <summary>
-    /// Queue position for resting orders.
-    /// </summary>
-    public int? QueuePosition { get; init; }
 
     /// <summary>
     /// Taker fees in dollars (string representation).
     /// </summary>
+    [JsonPropertyName("taker_fees_dollars")]
     public string? TakerFeesDollars { get; init; }
 
     /// <summary>
     /// Maker fees in dollars (string representation).
     /// </summary>
+    [JsonPropertyName("maker_fees_dollars")]
     public string? MakerFeesDollars { get; init; }
+
+    /// <summary>
+    /// Queue position for resting orders.
+    /// </summary>
+    public int? QueuePosition { get; init; }
 
     /// <summary>
     /// When the order expires.
@@ -156,4 +136,21 @@ public sealed record OrderResponse
     /// Whether to cancel order when market is paused.
     /// </summary>
     public bool? CancelOrderOnPause { get; init; }
+
+    /// <summary>
+    /// Directional exposure side of the order.
+    /// buy-yes and sell-no ? yes; buy-no and sell-yes ? no.
+    /// Prefer this over <see cref="Side"/> when present.
+    /// Will replace the legacy <see cref="Side"/> field in a future API release.
+    /// </summary>
+    [JsonPropertyName("outcome_side")]
+    public OrderSide? OutcomeSide { get; init; }
+
+    /// <summary>
+    /// Book-vocabulary equivalent of <see cref="OutcomeSide"/>.
+    /// bid = outcome yes; ask = outcome no.
+    /// Will replace the legacy <see cref="Side"/> field in a future API release.
+    /// </summary>
+    [JsonPropertyName("book_side")]
+    public OrderBookSide? BookSide { get; init; }
 }
