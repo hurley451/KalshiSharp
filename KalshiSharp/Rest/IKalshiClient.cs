@@ -33,11 +33,6 @@ public interface IKalshiClient : IDisposable
     IOrderClient Orders { get; }
 
     /// <summary>
-    /// Gets the V2 orders client for the events orders endpoint.
-    /// </summary>
-    IOrderClientV2 OrdersV2 { get; }
-
-    /// <summary>
     /// Gets the portfolio client for balance, positions, and fills endpoints.
     /// </summary>
     IPortfolioClient Portfolio { get; }

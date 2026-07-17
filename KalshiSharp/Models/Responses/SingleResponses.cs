@@ -1,18 +1,7 @@
 namespace KalshiSharp.Models.Responses;
 
 /// <summary>
-/// Wrapper response for a single market from the API.
-/// </summary>
-public sealed record SingleMarketResponse
-{
-    /// <summary>
-    /// The market data.
-    /// </summary>
-    public required MarketResponse Market { get; init; }
-}
-
-/// <summary>
-/// Wrapper response for a single market from the API.
+/// Wrapper response for a single event from the API.
 /// </summary>
 public sealed record SingleEventResponse
 {
@@ -23,7 +12,7 @@ public sealed record SingleEventResponse
 }
 
 /// <summary>
-/// Wrapper response for a single market from the API.
+/// Wrapper response for a single order from the API.
 /// </summary>
 public sealed record SingleOrderResponse
 {
