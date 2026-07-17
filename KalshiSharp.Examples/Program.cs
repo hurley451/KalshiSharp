@@ -157,7 +157,7 @@ static async Task ListMarketsExample(string apiKey, string apiSecret)
         foreach (var market in page1.Items)
         {
             Console.WriteLine($"  - {market.Ticker}: {market.Title}");
-            Console.WriteLine($"    Yes: {market.YesBid}c / {market.YesAsk}c, Volume: {market.Volume}");
+            Console.WriteLine($"    Yes: {market.YesBidDollars} / {market.YesAskDollars}, Volume: {market.VolumeFp}");
         }
 
         // Fetch next page if available

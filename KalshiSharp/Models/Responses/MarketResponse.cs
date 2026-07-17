@@ -1,5 +1,5 @@
-using System.Text.Json.Serialization;
 using KalshiSharp.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace KalshiSharp.Models.Responses;
 
@@ -37,72 +37,90 @@ public sealed record MarketResponse
     /// Type of market (e.g., "binary").
     /// </summary>
     public string? MarketType { get; init; }
+   
+    /// <summary>
+    /// Price for the highest YES buy offer on this market in dollars.
+    /// </summary>
+    [JsonPropertyName("yes_bid_dollars")]
+    public string? YesBidDollars { get; init; }
 
     /// <summary>
-    /// Current yes bid price (0-100 cents).
+    /// Total contract size of orders to buy YES at the best bid price (fixed-point count string).
     /// </summary>
-    public int YesBid { get; init; }
+    [JsonPropertyName("yes_bid_size_fp")]
+    public string? YesBidSizeFp { get; init; }
 
     /// <summary>
-    /// Current yes ask price (0-100 cents).
+    /// Price for the lowest YES sell offer on this market in dollars.
     /// </summary>
-    public int YesAsk { get; init; }
+    [JsonPropertyName("yes_ask_dollars")]
+    public string? YesAskDollars { get; init; }
 
     /// <summary>
-    /// Current no bid price (0-100 cents).
+    /// Total contract size of orders to sell YES at the best ask price (fixed-point count string).
     /// </summary>
-    public int NoBid { get; init; }
+    [JsonPropertyName("yes_ask_size_fp")]
+    public string? YesAskSizeFp { get; init; }
 
     /// <summary>
-    /// Current no ask price (0-100 cents).
+    /// Price for the highest NO buy offer on this market in dollars.
     /// </summary>
-    public int NoAsk { get; init; }
+    [JsonPropertyName("no_bid_dollars")]
+    public string? NoBidDollars { get; init; }
 
     /// <summary>
-    /// Last traded price in cents.
+    /// Price for the lowest NO sell offer on this market in dollars.
     /// </summary>
-    public int? LastPrice { get; init; }
+    [JsonPropertyName("no_ask_dollars")]
+    public string? NoAskDollars { get; init; }
 
     /// <summary>
-    /// Previous day's yes ask price.
+    /// Price for the last traded YES contract on this market in dollars.
     /// </summary>
-    public int? PreviousYesAsk { get; init; }
+    [JsonPropertyName("last_price_dollars")]
+    public string? LastPriceDollars { get; init; }
 
     /// <summary>
-    /// Previous day's yes bid price.
+    /// String representation of the market volume in contracts.
     /// </summary>
-    public int? PreviousYesBid { get; init; }
+    [JsonPropertyName("volume_fp")]
+    public string? VolumeFp { get; init; }
 
     /// <summary>
-    /// Previous day's price.
+    /// String representation of the 24h market volume in contracts.
     /// </summary>
-    public int? PreviousPrice { get; init; }
+    [JsonPropertyName("volume_24h_fp")]
+    public string? Volume24hFp { get; init; }
 
     /// <summary>
-    /// Total volume traded in this market.
+    /// String representation of the number of contracts bought on this market disconsidering netting.
     /// </summary>
-    public int Volume { get; init; }
+    [JsonPropertyName("open_interest_fp")]
+    public string? OpenInterestFp { get; init; }
 
     /// <summary>
-    /// 24-hour trading volume.
+    /// The total value of a single contract at settlement in dollars.
     /// </summary>
-    [JsonPropertyName("volume_24h")]
-    public int Volume24H { get; init; }
+    [JsonPropertyName("notional_value_dollars")]
+    public string? NotionalValueDollars { get; init; }
 
     /// <summary>
-    /// Current open interest (total outstanding contracts).
+    /// Price for the highest YES buy offer on this market a day ago in dollars.
     /// </summary>
-    public int OpenInterest { get; init; }
+    [JsonPropertyName("previous_yes_bid_dollars")]
+    public string? PreviousYesBidDollars { get; init; }
 
     /// <summary>
-    /// Current liquidity in cents.
+    /// Price for the lowest YES sell offer on this market a day ago in dollars.
     /// </summary>
-    public int? Liquidity { get; init; }
+    [JsonPropertyName("previous_yes_ask_dollars")]
+    public string? PreviousYesAskDollars { get; init; }
 
     /// <summary>
-    /// Notional value in cents.
+    /// Price for the last traded YES contract on this market a day ago in dollars.
     /// </summary>
-    public int? NotionalValue { get; init; }
+    [JsonPropertyName("previous_price_dollars")]
+    public string? PreviousPriceDollars { get; init; }
 
     /// <summary>
     /// Tick size for price increments.
