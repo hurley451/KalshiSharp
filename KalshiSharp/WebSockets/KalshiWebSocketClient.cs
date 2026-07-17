@@ -294,8 +294,7 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
 
         try
         {
-            while (!cancellationToken.IsCancellationRequested &&
-                   _connection.WebSocketState == WebSocketState.Open)
+            while (!cancellationToken.IsCancellationRequested && _connection.WebSocketState == WebSocketState.Open)
             {
                 messageBuffer.SetLength(0);
 
@@ -332,7 +331,7 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
             await HandleDisconnectAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
-        {
+        {            
             LogReceiveError(ex);
             await HandleDisconnectAsync(cancellationToken).ConfigureAwait(false);
         }
