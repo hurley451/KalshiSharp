@@ -115,10 +115,13 @@ jobs:
         shell: bash
         env:
           NUGET_API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
+          PACKAGE_VERSION: ${{ steps.version.outputs.value }}
         run: |
-          dotnet nuget push artifacts/packages/*.nupkg \
+          dotnet nuget push "artifacts/packages/KalshiSharp.${PACKAGE_VERSION}.nupkg" \
             --api-key "$NUGET_API_KEY" \
-            --source https://api.nuget.org/v3/index.json
-          dotnet nuget push artifacts/packages/*.snupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+          dotnet nuget push "artifacts/packages/KalshiSharp.${PACKAGE_VERSION}.snupkg" \
             --api-key "$NUGET_API_KEY" \
-            --source https://api.nuget.org/v3/index.json
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
