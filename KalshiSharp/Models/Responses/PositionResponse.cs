@@ -53,6 +53,9 @@ public sealed record PositionResponse
     /// <summary>When the position was last updated.</summary>
     public DateTimeOffset? LastUpdatedTs { get; init; }
 
+    /// <summary>Exchange shard that owns this market position.</summary>
+    public int? ExchangeIndex { get; init; }
+
     /// <summary>
     /// Average price paid for the position.
     /// </summary>

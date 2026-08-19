@@ -4,6 +4,7 @@ using KalshiSharp.Configuration;
 using KalshiSharp.Http;
 using KalshiSharp.Rest.Events;
 using KalshiSharp.Rest.Exchange;
+using KalshiSharp.Rest.Historical;
 using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
@@ -24,6 +25,7 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IEventClient _events;
     private readonly IOrderClient _orders;
     private readonly IOrderClientV2? _ordersV2;
+    private readonly IHistoricalClient? _historical;
     private readonly IPortfolioClient _portfolio;
     private readonly IUserClient _users;
 
@@ -84,6 +86,7 @@ public sealed class KalshiClient : IKalshiClient
         _events = new EventClient(kalshiHttpClient);
         _orders = new OrderClient(kalshiHttpClient);
         _ordersV2 = new OrderClientV2(kalshiHttpClient);
+        _historical = new HistoricalClient(kalshiHttpClient);
         _portfolio = new PortfolioClient(kalshiHttpClient);
         _users = new UserClient(kalshiHttpClient);
     }
@@ -102,6 +105,7 @@ public sealed class KalshiClient : IKalshiClient
         _events = new EventClient(httpClient);
         _orders = new OrderClient(httpClient);
         _ordersV2 = new OrderClientV2(httpClient);
+        _historical = new HistoricalClient(httpClient);
         _portfolio = new PortfolioClient(httpClient);
         _users = new UserClient(httpClient);
     }
@@ -129,6 +133,7 @@ public sealed class KalshiClient : IKalshiClient
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _orders = orders ?? throw new ArgumentNullException(nameof(orders));
         _ordersV2 = null;
+        _historical = null;
         _portfolio = portfolio ?? throw new ArgumentNullException(nameof(portfolio));
         _users = users ?? throw new ArgumentNullException(nameof(users));
     }
@@ -180,6 +185,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _ordersV2;
+        }
+    }
+
+    /// <inheritdoc />
+    public IHistoricalClient? Historical
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _historical;
         }
     }
 

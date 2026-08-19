@@ -74,6 +74,12 @@ public sealed record FillResponse
     /// <summary>Matching-engine timestamp.</summary>
     public long? Ts { get; init; }
 
+    /// <summary>Subaccount that owns the fill.</summary>
+    public int? SubaccountNumber { get; init; }
+
+    /// <summary>Exchange shard where the fill occurred.</summary>
+    public int? ExchangeIndex { get; init; }
+
     /// <summary>
     /// Whether this was a maker or taker fill.
     /// </summary>

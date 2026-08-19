@@ -58,4 +58,10 @@ public sealed record TradeResponse
     /// Taker side of the trade.
     /// </summary>
     public string? TakerSide { get; init; }
+
+    /// <summary>Canonical outcome side of the taker.</summary>
+    public OrderSide? TakerOutcomeSide { get; init; }
+
+    /// <summary>Canonical order-book side of the taker.</summary>
+    public OrderBookSide? TakerBookSide { get; init; }
 }
