@@ -99,7 +99,7 @@ internal sealed class MarketClient : IMarketClient
     /// <inheritdoc />
     public Task<MarketCandlesticksResponse> GetMarketCandlesticksAsync(string seriesTicker, string ticker, MarketCandlesticksQuery query, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(seriesTicker); 
+        ArgumentException.ThrowIfNullOrWhiteSpace(seriesTicker);
         ArgumentException.ThrowIfNullOrWhiteSpace(ticker);
         ArgumentNullException.ThrowIfNull(query);
 

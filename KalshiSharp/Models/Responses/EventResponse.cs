@@ -63,4 +63,33 @@ public sealed record EventResponse
     /// Only filled when the event uses a period strike (mutually exclusive with strike_date).
     /// </summary>
     public string? StrikePeriod { get; init; }
+
+    /// <summary>Sources used to settle the event.</summary>
+    public IReadOnlyList<SettlementSource> SettlementSources { get; init; } = [];
+
+    /// <summary>Additional product metadata for this event.</summary>
+    public EventProductMetadata? ProductMetadata { get; init; }
+
+    /// <summary>When this event was last updated.</summary>
+    public DateTimeOffset? LastUpdatedTs { get; init; }
+
+    /// <summary>Exchange shard that owns this event.</summary>
+    public int? ExchangeIndex { get; init; }
+
+    /// <summary>A source used to settle an event.</summary>
+    public sealed record SettlementSource
+    {
+        /// <summary>Source name.</summary>
+        public required string Name { get; init; }
+
+        /// <summary>Source URL.</summary>
+        public required string Url { get; init; }
+    }
+
+    /// <summary>Product-specific event metadata.</summary>
+    public sealed record EventProductMetadata
+    {
+        /// <summary>Publication or occurrence cadence.</summary>
+        public string? Cadence { get; init; }
+    }
 }

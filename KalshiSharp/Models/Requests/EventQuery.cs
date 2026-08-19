@@ -28,6 +28,14 @@ public sealed record EventQuery : PaginationParameters
     /// </summary>
     public bool? WithNestedMarkets { get; init; }
 
+    /// <summary>Filter by specific event tickers.</summary>
+    public IReadOnlyList<string>? Tickers { get; init; }
+
+    /// <summary>
+    /// Filter events having at least one market closing after this time.
+    /// </summary>
+    public DateTimeOffset? MinCloseTime { get; init; }
+
     /// <summary>
     /// Builds the query string for the API request.
     /// </summary>
@@ -45,6 +53,16 @@ public sealed record EventQuery : PaginationParameters
 
         builder.AppendIfNotEmpty("series_ticker", SeriesTicker);
         builder.AppendIfNotEmpty("with_nested_markets", WithNestedMarkets?.ToString()?.ToLowerInvariant());
+
+        if (Tickers is { Count: > 0 })
+        {
+            builder.Append("tickers", string.Join(",", Tickers));
+        }
+
+        if (MinCloseTime.HasValue)
+        {
+            builder.Append("min_close_ts", MinCloseTime.Value.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
 
         return builder.Build();
     }
