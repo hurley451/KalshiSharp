@@ -8,7 +8,25 @@ public sealed record OrderBookResponse
     /// <summary>
     /// The order book data.
     /// </summary>
-    public required OrderBookData Orderbook { get; init; }
+    public OrderBookData Orderbook { get; init; } = new();
+
+    /// <summary>
+    /// Fixed-point order book data returned by the current API.
+    /// </summary>
+    public FixedPointOrderBookData OrderbookFp { get; init; } = new();
+}
+
+/// <summary>
+/// Represents fixed-point order book levels. Each entry is
+/// [price_dollars, count_fp].
+/// </summary>
+public sealed record FixedPointOrderBookData
+{
+    /// <summary>YES bid levels.</summary>
+    public IReadOnlyList<string[]> YesDollars { get; init; } = [];
+
+    /// <summary>NO bid levels.</summary>
+    public IReadOnlyList<string[]> NoDollars { get; init; } = [];
 }
 
 /// <summary>

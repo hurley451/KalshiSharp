@@ -1,8 +1,8 @@
-using System.Globalization;
 using KalshiSharp.Http;
 using KalshiSharp.Models.Common;
 using KalshiSharp.Models.Requests;
 using KalshiSharp.Models.Responses;
+using System.Globalization;
 
 namespace KalshiSharp.Rest.Markets;
 
@@ -12,6 +12,7 @@ namespace KalshiSharp.Rest.Markets;
 internal sealed class MarketClient : IMarketClient
 {
     private const string BasePath = "/trade-api/v2/markets";
+    private const string SeriesBasePath = "/trade-api/v2/series";
 
     private readonly IKalshiHttpClient _httpClient;
 
@@ -79,6 +80,7 @@ internal sealed class MarketClient : IMarketClient
         ArgumentException.ThrowIfNullOrWhiteSpace(ticker);
 
         var builder = new QueryStringBuilder();
+        builder.Append("ticker", ticker);
         builder.AppendIfNotEmpty("cursor", cursor);
         if (limit.HasValue)
         {
@@ -88,9 +90,47 @@ internal sealed class MarketClient : IMarketClient
         var request = new KalshiRequest
         {
             Method = HttpMethod.Get,
-            Path = $"{BasePath}/{Uri.EscapeDataString(ticker)}/trades{builder.Build()}"
+            Path = $"{BasePath}/trades{builder.Build()}"
         };
 
         return _httpClient.SendAsync<TradesResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<MarketCandlesticksResponse> GetMarketCandlesticksAsync(string seriesTicker, string ticker, MarketCandlesticksQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(seriesTicker); 
+        ArgumentException.ThrowIfNullOrWhiteSpace(ticker);
+        ArgumentNullException.ThrowIfNull(query);
+
+        var queryString = query.ToQueryString();
+
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{SeriesBasePath}/{Uri.EscapeDataString(seriesTicker)}/markets/{Uri.EscapeDataString(ticker)}/candlesticks{queryString}"
+        };
+
+        return _httpClient.SendAsync<MarketCandlesticksResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<BatchMarketCandlesticksResponse> GetBatchMarketCandlesticksAsync(BatchMarketCandlesticksQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        if (query.MarketTickers is null || query.MarketTickers.Count == 0)
+            throw new ArgumentException("At least one market ticker is required.", nameof(query));
+
+        if (query.MarketTickers.Count > 100)
+            throw new ArgumentException("A maximum of 100 market tickers is allowed per request.", nameof(query));
+
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/candlesticks{query.ToQueryString()}"
+        };
+
+        return _httpClient.SendAsync<BatchMarketCandlesticksResponse>(request, cancellationToken);
     }
 }
