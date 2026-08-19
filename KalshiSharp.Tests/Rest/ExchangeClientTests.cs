@@ -75,7 +75,15 @@ public sealed class ExchangeClientTests : IDisposable
                 .WithBody("""
                     {
                         "exchange_active": true,
-                        "trading_active": true
+                        "trading_active": true,
+                        "intra_exchange_transfers_active": true,
+                        "exchange_index_statuses": [{
+                            "exchange_index": 1,
+                            "exchange_active": true,
+                            "trading_active": true,
+                            "intra_exchange_transfers_active": true,
+                            "description": "Combo exchange"
+                        }]
                     }
                     """));
 
@@ -86,6 +94,9 @@ public sealed class ExchangeClientTests : IDisposable
         result.Should().NotBeNull();
         result.ExchangeActive.Should().BeTrue();
         result.TradingActive.Should().BeTrue();
+        result.IntraExchangeTransfersActive.Should().BeTrue();
+        result.ExchangeIndexStatuses.Should().ContainSingle();
+        result.ExchangeIndexStatuses[0].Description.Should().Be("Combo exchange");
     }
 
     [Fact]

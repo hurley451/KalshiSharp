@@ -18,6 +18,9 @@ public sealed record FillQuery : PaginationParameters
     /// <summary>Return fills before this time.</summary>
     public DateTimeOffset? MaxTime { get; init; }
 
+    /// <summary>Filter by subaccount, including zero for the primary account.</summary>
+    public int? Subaccount { get; init; }
+
     /// <summary>Builds the query string.</summary>
     public string ToQueryString()
     {
@@ -25,6 +28,10 @@ public sealed record FillQuery : PaginationParameters
         AppendPaginationParameters(builder);
         builder.AppendIfNotEmpty("ticker", Ticker);
         builder.AppendIfNotEmpty("order_id", OrderId);
+        if (Subaccount.HasValue)
+        {
+            builder.Append("subaccount", Subaccount.Value.ToString(CultureInfo.InvariantCulture));
+        }
 
         if (MinTime.HasValue)
         {

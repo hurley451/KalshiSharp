@@ -97,6 +97,18 @@ internal sealed class MarketClient : IMarketClient
     }
 
     /// <inheritdoc />
+    public Task<TradesResponse> GetTradesAsync(MarketTradeQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/trades{query.ToQueryString()}"
+        };
+        return _httpClient.SendAsync<TradesResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<MarketCandlesticksResponse> GetMarketCandlesticksAsync(string seriesTicker, string ticker, MarketCandlesticksQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(seriesTicker);

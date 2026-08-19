@@ -35,6 +35,18 @@ internal sealed class PortfolioClient : IPortfolioClient
     }
 
     /// <inheritdoc />
+    public Task<BalanceResponse> GetBalanceAsync(BalanceQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/balance{query.ToQueryString()}"
+        };
+        return _httpClient.SendAsync<BalanceResponse>(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<PositionsResponse> ListPositionsAsync(
         string? cursor = null,
         int? limit = null,

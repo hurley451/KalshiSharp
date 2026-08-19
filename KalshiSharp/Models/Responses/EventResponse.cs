@@ -76,6 +76,12 @@ public sealed record EventResponse
     /// <summary>Exchange shard that owns this event.</summary>
     public int? ExchangeIndex { get; init; }
 
+    /// <summary>Event-level fee type override.</summary>
+    public string? FeeTypeOverride { get; init; }
+
+    /// <summary>Event-level fee multiplier override.</summary>
+    public decimal? FeeMultiplierOverride { get; init; }
+
     /// <summary>A source used to settle an event.</summary>
     public sealed record SettlementSource
     {

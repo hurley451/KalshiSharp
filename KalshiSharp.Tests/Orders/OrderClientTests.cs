@@ -672,7 +672,8 @@ public sealed class OrderClientTests : IDisposable
                         "initial_count_fp": "10.00",
                         "yes_price_dollars": "0.5600",
                         "subaccount_number": 2,
-                        "exchange_index": 1
+                        "exchange_index": 1,
+                        "last_update_reason": "PostOnlyCrossCancel"
                     }
                 }
                 """));
@@ -683,5 +684,6 @@ public sealed class OrderClientTests : IDisposable
         result.RemainingCountFp.Should().Be("8.50");
         result.SubaccountNumber.Should().Be(2);
         result.ExchangeIndex.Should().Be(1);
+        result.LastUpdateReason.Should().Be("PostOnlyCrossCancel");
     }
 }

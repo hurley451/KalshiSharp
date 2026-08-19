@@ -180,4 +180,7 @@ public sealed record OrderResponse
 
     /// <summary>Matching-engine timestamp in Unix epoch milliseconds.</summary>
     public long? TsMs { get; init; }
+
+    /// <summary>Reason for the latest order state transition.</summary>
+    public string? LastUpdateReason { get; init; }
 }

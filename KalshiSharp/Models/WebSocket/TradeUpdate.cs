@@ -67,6 +67,12 @@ public sealed record TradeUpdate : WebSocketMessage<TradeUpdate.MessageBody>
         [JsonPropertyName("taker_side")]
         public string? TakerSide { get; init; }
 
+        /// <summary>Canonical outcome side of the taker.</summary>
+        public OrderSide? TakerOutcomeSide { get; init; }
+
+        /// <summary>Canonical order-book side of the taker.</summary>
+        public OrderBookSide? TakerBookSide { get; init; }
+
         /// <summary>
         /// When this trade occurred (Unix milliseconds).
         /// </summary>

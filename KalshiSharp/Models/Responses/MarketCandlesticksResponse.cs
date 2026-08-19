@@ -56,17 +56,17 @@ public sealed record MarketCandlesticksResponse
                 /// Offer price on the market at the start of the candlestick period (in dollars).
                 /// </summary>
                 public required string OpenDollars { get; init; }
-                
+
                 /// <summary>
                 /// Lowest offer price on the market during the candlestick period (in dollars).
                 /// </summary>
                 public required string LowDollars { get; init; }
-                
+
                 /// <summary>
                 /// Highest offer price on the market during the candlestick period (in dollars).
                 /// </summary>
                 public required string HighDollars { get; init; }
-                
+
                 /// <summary>
                 /// Offer price on the market at the end of the candlestick period (in dollars).
                 /// </summary>
@@ -79,37 +79,37 @@ public sealed record MarketCandlesticksResponse
                 /// First traded YES contract price on the market during the candlestick period (in dollars). May be null if there was no trade during the period.
                 /// </summary>
                 public string? OpenDollars { get; init; }
-                
+
                 /// <summary>
                 /// Lowest traded YES contract price on the market during the candlestick period (in dollars). May be null if there was no trade during the period.
                 /// </summary>
                 public string? LowDollars { get; init; }
-                
+
                 /// <summary>
                 /// Highest traded YES contract price on the market during the candlestick period (in dollars). May be null if there was no trade during the period.
                 /// </summary>
                 public string? HighDollars { get; init; }
-                
+
                 /// <summary>
                 /// Last traded YES contract price on the market during the candlestick period (in dollars). May be null if there was no trade during the period.
                 /// </summary>
                 public string? CloseDollars { get; init; }
-                
+
                 /// <summary>
                 /// Mean traded YES contract price on the market during the candlestick period (in dollars). May be null if there was no trade during the period.
                 /// </summary>
                 public string? MeanDollars { get; init; }
-                
+
                 /// <summary>
                 /// Last traded YES contract price on the market before the candlestick period (in dollars). May be null if there were no trades before the period.
                 /// </summary>
                 public string? PreviousDollars { get; init; }
-                
+
                 /// <summary>
                 /// String representation of the number of contracts bought on the market during the candlestick period.
                 /// </summary>
                 public string? MinDollars { get; init; }
-                
+
                 /// <summary>
                 /// String representation of the number of contracts bought on the market by end of the candlestick period (end_period_ts).
                 /// </summary>

@@ -169,6 +169,21 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task SubscribeAsync_TickerCanSkipInitialAcknowledgement()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        await _client.SubscribeAsync(new TickerSubscription
+        {
+            Markets = ["MARKET-XYZ"],
+            SkipTickerAck = true
+        });
+
+        _mockConnection.SentMessages[^1].Should().Contain("\"skip_ticker_ack\":true");
+    }
+
+    [Fact]
     public async Task Messages_ReceivesOrderBookUpdate()
     {
         // Arrange
@@ -340,6 +355,8 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
                 "no_price_dollars": "0.5675",
                 "count_fp": "10.50",
                 "is_block_trade": true,
+                "taker_outcome_side": "yes",
+                "taker_book_side": "bid",
                 "ts": 1787155200,
                 "ts_ms": 1787155200123
               }
@@ -352,7 +369,37 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         trade.Message.YesPriceDollars.Should().Be("0.4325");
         trade.Message.CountFp.Should().Be("10.50");
         trade.Message.IsBlockTrade.Should().BeTrue();
+        trade.Message.TakerOutcomeSide.Should().Be(OrderSide.Yes);
+        trade.Message.TakerBookSide.Should().Be(OrderBookSide.Bid);
         trade.Message.TimeStamp.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1787155200123));
+    }
+
+    [Fact]
+    public void CurrentOrderBookDelta_DeserializesWithoutRemovedIntegerFields()
+    {
+        const string json = """
+            {
+              "type": "orderbook_delta",
+              "seq": 3,
+              "msg": {
+                "market_ticker": "KXTEST-26AUG19",
+                "market_id": "9b0f6b43-5b68-4f9f-9f02-9a2d1b8ac1a1",
+                "price_dollars": "0.4325",
+                "delta_fp": "-54.00",
+                "side": "yes",
+                "last_update_reason": "PostOnlyCrossCancel",
+                "ts_ms": 1787155200123
+              }
+            }
+            """;
+
+        var update = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default)
+            .Should().BeOfType<OrderBookUpdate>().Subject;
+
+        update.Message.PriceDollars.Should().Be("0.4325");
+        update.Message.DeltaFp.Should().Be("-54.00");
+        update.Message.LastUpdateReason.Should().Be("PostOnlyCrossCancel");
+        update.Message.TsMs.Should().Be(1787155200123);
     }
 
     [Fact]
@@ -619,6 +666,9 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
                     "price_dollars": "0.55",
                     "yes_bid_dollars": "0.54",
                     "yes_ask_dollars": "0.56",
+                    "yes_bid_size_fp": "12.50",
+                    "yes_ask_size_fp": "8.25",
+                    "last_trade_size_fp": "2.00",
                     "volume": 10000,
                     "volume_fp": 10000.00,
                     "open_interest": 5000,
@@ -660,6 +710,9 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         tickerUpdate.Message.Price.Should().Be(55);
         tickerUpdate.Message.YesBid.Should().Be(54);
         tickerUpdate.Message.YesAsk.Should().Be(56);
+        tickerUpdate.Message.YesBidSizeFp.Should().Be("12.50");
+        tickerUpdate.Message.YesAskSizeFp.Should().Be("8.25");
+        tickerUpdate.Message.LastTradeSizeFp.Should().Be("2.00");
         tickerUpdate.Message.Volume.Should().Be(10000);
         tickerUpdate.Message.OpenInterest.Should().Be(5000);
         tickerUpdate.Message.TimeStamp.Should().Be(1771526292);

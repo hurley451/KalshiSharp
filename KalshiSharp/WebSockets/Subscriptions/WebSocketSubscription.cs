@@ -27,11 +27,14 @@ public abstract record WebSocketSubscription
     {
         Id = 1,
         Command = "subscribe",
-        Params = new SubscriptionParams
-        {
-            Channels = [Channel],
-            MarketTickers = Markets
-        }
+        Params = CreateSubscribeParams()
+    };
+
+    /// <summary>Creates channel-specific subscription parameters.</summary>
+    internal virtual SubscriptionParams CreateSubscribeParams() => new()
+    {
+        Channels = [Channel],
+        MarketTickers = Markets
     };
 
     /// <summary>
@@ -90,4 +93,10 @@ internal sealed record SubscriptionParams
     /// </summary>
     [JsonPropertyName("market_tickers")]
     public IReadOnlyList<string> MarketTickers { get; init; } = [];
+
+    /// <summary>
+    /// Skips the initial ticker acknowledgement when requested by a ticker subscription.
+    /// </summary>
+    [JsonPropertyName("skip_ticker_ack")]
+    public bool? SkipTickerAck { get; init; }
 }

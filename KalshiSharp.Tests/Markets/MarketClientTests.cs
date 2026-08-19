@@ -183,6 +183,7 @@ public sealed class MarketClientTests : IDisposable
                 .WithPath("/trade-api/v2/markets")
                 .WithParam("status", "open")
                 .WithParam("event_ticker", "EVENT-123")
+                .WithParam("min_updated_ts", "1767225600")
                 .WithParam("limit", "50")
                 .UsingGet())
             .RespondWith(Response.Create()
@@ -199,6 +200,7 @@ public sealed class MarketClientTests : IDisposable
         {
             Status = MarketStatus.Active,
             EventTicker = "EVENT-123",
+            MinUpdatedTs = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             Limit = 50
         };
 
@@ -391,6 +393,30 @@ public sealed class MarketClientTests : IDisposable
         result.Should().NotBeNull();
         result.Items.Should().BeEmpty();
         result.HasMore.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetTradesAsync_WithCurrentQuery_AppliesBlockTradeFilter()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/markets/trades")
+                .WithParam("ticker", "MARKET-ABC")
+                .WithParam("is_block_trade", "false")
+                .WithParam("limit", "25")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{ "trades": [], "cursor": null }"""));
+
+        var result = await _client.GetTradesAsync(new MarketTradeQuery
+        {
+            Ticker = "MARKET-ABC",
+            IsBlockTrade = false,
+            Limit = 25
+        });
+
+        result.Trades.Should().BeEmpty();
     }
 
     [Fact]

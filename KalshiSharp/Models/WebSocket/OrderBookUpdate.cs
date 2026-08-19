@@ -34,14 +34,14 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
         /// Price level for this update (1-99 cents).
         /// </summary>
         [JsonPropertyName("price")]
-        public required int Price { get; init; }
+        public int Price { get; init; }
 
         /// <summary>
         /// Change in quantity at this price level for Yes side.
         /// Positive = added, negative = removed.
         /// </summary>
         [JsonPropertyName("delta")]
-        public required int Delta { get; init; }
+        public int Delta { get; init; }
 
         /// <summary>Price level in dollars.</summary>
         [JsonPropertyName("price_dollars")]
@@ -84,6 +84,10 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
         /// <summary>Timestamp in Unix milliseconds.</summary>
         [JsonPropertyName("ts_ms")]
         public long? TsMs { get; init; }
+
+        /// <summary>Reason for the order state change that produced this delta.</summary>
+        [JsonPropertyName("last_update_reason")]
+        public string? LastUpdateReason { get; init; }
 
         /// <summary>
         /// Whether this is the Yes side.

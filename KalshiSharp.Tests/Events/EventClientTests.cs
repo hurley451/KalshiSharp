@@ -591,7 +591,9 @@ public sealed class EventClientTests : IDisposable
                         "collateral_return_type": "binary",
                         "settlement_sources": [{ "name": "Source", "url": "https://example.com" }],
                         "product_metadata": { "cadence": "daily" },
-                        "exchange_index": 1
+                        "exchange_index": 1,
+                        "fee_type_override": "quadratic",
+                        "fee_multiplier_override": 0.75
                     },
                     "markets": [{
                         "ticker": "MARKET-CURRENT",
@@ -611,6 +613,8 @@ public sealed class EventClientTests : IDisposable
         result.SettlementSources.Should().ContainSingle().Which.Name.Should().Be("Source");
         result.ProductMetadata!.Cadence.Should().Be("daily");
         result.ExchangeIndex.Should().Be(1);
+        result.FeeTypeOverride.Should().Be("quadratic");
+        result.FeeMultiplierOverride.Should().Be(0.75m);
     }
 
     [Fact]

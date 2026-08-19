@@ -416,11 +416,34 @@ public sealed class PortfolioClientTests : IDisposable
     }
 
     [Fact]
+    public async Task GetBalanceAsync_WithCurrentScope_AppliesExplicitZeroValues()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/balance")
+                .WithParam("subaccount", "0")
+                .WithParam("exchange_index", "0")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{ "balance": 5600, "balance_dollars": "56.0000", "portfolio_value": 7000, "updated_ts": 1755600000 }"""));
+
+        var result = await _portfolioClient.GetBalanceAsync(new BalanceQuery
+        {
+            Subaccount = 0,
+            ExchangeIndex = 0
+        });
+
+        result.BalanceDollars.Should().Be("56.0000");
+    }
+
+    [Fact]
     public async Task ListPositionsAsync_CurrentPayload_ParsesMarketAndEventPositions()
     {
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/portfolio/positions")
                 .WithParam("count_filter", "position,total_traded")
+                .WithParam("subaccount", "0")
                 .UsingGet())
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
@@ -450,7 +473,8 @@ public sealed class PortfolioClientTests : IDisposable
 
         var result = await _portfolioClient.ListPositionsAsync(new PositionQuery
         {
-            CountFilter = ["position", "total_traded"]
+            CountFilter = ["position", "total_traded"],
+            Subaccount = 0
         });
 
         result.Items.Should().ContainSingle();
@@ -465,6 +489,7 @@ public sealed class PortfolioClientTests : IDisposable
                 .WithPath("/trade-api/v2/portfolio/fills")
                 .WithParam("min_ts", "1755600000")
                 .WithParam("max_ts", "1755603600")
+                .WithParam("subaccount", "2")
                 .UsingGet())
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
@@ -492,7 +517,8 @@ public sealed class PortfolioClientTests : IDisposable
         var result = await _portfolioClient.ListFillsAsync(new FillQuery
         {
             MinTime = DateTimeOffset.FromUnixTimeSeconds(1755600000),
-            MaxTime = DateTimeOffset.FromUnixTimeSeconds(1755603600)
+            MaxTime = DateTimeOffset.FromUnixTimeSeconds(1755603600),
+            Subaccount = 2
         });
 
         result.Items.Should().ContainSingle();

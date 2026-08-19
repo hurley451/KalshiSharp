@@ -1,3 +1,4 @@
+using System.Globalization;
 using KalshiSharp.Models.Common;
 
 namespace KalshiSharp.Models.Requests;
@@ -17,6 +18,9 @@ public sealed record PositionQuery : PaginationParameters
     /// </summary>
     public IReadOnlyList<string>? CountFilter { get; init; }
 
+    /// <summary>Filter by subaccount, including zero for the primary account.</summary>
+    public int? Subaccount { get; init; }
+
     /// <summary>Builds the query string.</summary>
     public string ToQueryString()
     {
@@ -24,6 +28,10 @@ public sealed record PositionQuery : PaginationParameters
         AppendPaginationParameters(builder);
         builder.AppendIfNotEmpty("ticker", Ticker);
         builder.AppendIfNotEmpty("event_ticker", EventTicker);
+        if (Subaccount.HasValue)
+        {
+            builder.Append("subaccount", Subaccount.Value.ToString(CultureInfo.InvariantCulture));
+        }
 
         if (CountFilter is { Count: > 0 })
         {

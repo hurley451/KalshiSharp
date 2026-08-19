@@ -15,6 +15,17 @@ public sealed record TickerSubscription : WebSocketSubscription
     public override string Channel => ChannelName;
 
     /// <summary>
+    /// Gets whether the server should omit the initial ticker acknowledgement.
+    /// </summary>
+    public bool SkipTickerAck { get; init; }
+
+    /// <inheritdoc />
+    internal override SubscriptionParams CreateSubscribeParams() => base.CreateSubscribeParams() with
+    {
+        SkipTickerAck = SkipTickerAck ? true : null
+    };
+
+    /// <summary>
     /// Creates a ticker subscription for the specified market tickers.
     /// </summary>
     /// <param name="marketTickers">The market tickers to subscribe to.</param>

@@ -43,6 +43,10 @@ public interface IMarketClient
     /// <returns>A paginated list of trades.</returns>
     Task<TradesResponse> GetTradesAsync(string ticker, string? cursor = null, int? limit = null, CancellationToken cancellationToken = default);
 
+    /// <summary>Gets public trades using the current filter contract.</summary>
+    Task<TradesResponse> GetTradesAsync(MarketTradeQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This market client does not support the current trade query contract.");
+
     /// <summary>
     /// Gets candlesticks for a market.
     /// </summary>
@@ -51,7 +55,8 @@ public interface IMarketClient
     /// <param name="query">Query parameters</param>
     ///  /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    Task<MarketCandlesticksResponse> GetMarketCandlesticksAsync(string seriesTicker, string ticker, MarketCandlesticksQuery query, CancellationToken cancellationToken = default);
+    Task<MarketCandlesticksResponse> GetMarketCandlesticksAsync(string seriesTicker, string ticker, MarketCandlesticksQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This market client does not support market candlesticks.");
 
     /// <summary>
     /// Gets candlesticks for multiple markets in a single request.
@@ -60,5 +65,6 @@ public interface IMarketClient
     /// <param name="query">Query parameters including the list of market tickers.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Candlestick data grouped by market ticker.</returns>
-    Task<BatchMarketCandlesticksResponse> GetBatchMarketCandlesticksAsync(BatchMarketCandlesticksQuery query, CancellationToken cancellationToken = default);
+    Task<BatchMarketCandlesticksResponse> GetBatchMarketCandlesticksAsync(BatchMarketCandlesticksQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This market client does not support batch market candlesticks.");
 }

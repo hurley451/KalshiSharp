@@ -15,6 +15,10 @@ public interface IPortfolioClient
     /// <returns>The account balance details.</returns>
     Task<BalanceResponse> GetBalanceAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Retrieves an explicitly scoped balance.</summary>
+    Task<BalanceResponse> GetBalanceAsync(BalanceQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support scoped balances.");
+
     /// <summary>
     /// Lists positions with optional filtering and pagination.
     /// </summary>
@@ -32,7 +36,8 @@ public interface IPortfolioClient
         CancellationToken cancellationToken = default);
 
     /// <summary>Lists positions using the current query contract.</summary>
-    Task<PositionsResponse> ListPositionsAsync(PositionQuery query, CancellationToken cancellationToken = default);
+    Task<PositionsResponse> ListPositionsAsync(PositionQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support the current position query contract.");
 
     /// <summary>
     /// Lists fills (trade executions) with optional filtering and pagination.
@@ -51,5 +56,6 @@ public interface IPortfolioClient
         CancellationToken cancellationToken = default);
 
     /// <summary>Lists fills using the current query contract.</summary>
-    Task<FillsResponse> ListFillsAsync(FillQuery query, CancellationToken cancellationToken = default);
+    Task<FillsResponse> ListFillsAsync(FillQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support the current fill query contract.");
 }
