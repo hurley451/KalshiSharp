@@ -338,7 +338,19 @@ dotnet run --project KalshiSharp.Examples -- all
 
 NuGet publishing uses GitHub Actions trusted publishing. Publishing a GitHub Release with a semantic-version tag such as `v1.1.0` builds, tests, validates the package against `1.0.1`, creates package artifacts, obtains a short-lived NuGet.org credential through OpenID Connect, and publishes the package and symbols. No long-lived NuGet API key is stored in GitHub.
 
-The NuGet.org trusted publishing policy must target GitHub repository `Hurley451/KalshiSharp`, workflow `release.yml`, and environment `nuget.org` under the `MattHurley` NuGet.org account.
+One-time owner setup:
+
+1. Allow SHA-pinned GitHub-owned actions and `NuGet/login` in **Settings → Actions → General**. The workflows do not use floating action tags.
+2. Create a GitHub environment named `nuget.org`. Restrict deployment to protected tags matching `v*`; add a required reviewer if releases should require a manual approval.
+3. While signed in to NuGet.org as `MattHurley`, create a trusted-publishing policy for owner `MattHurley`, GitHub owner `Hurley451`, repository `KalshiSharp`, workflow `release.yml`, and environment `nuget.org`.
+
+Release procedure:
+
+1. Update `VersionPrefix` and release notes, merge the change to `main`, and confirm CI is green.
+2. Publish a GitHub Release whose tag exactly matches `v<VersionPrefix>`, for example `v1.1.0`.
+3. The release workflow verifies tag ancestry and version equality before publishing the package and symbols.
+
+NuGet packages are immutable. If a published package is defective, deprecate or unlist that version on NuGet.org, fix forward with a new patch version, and publish a new GitHub Release. Never move or reuse a published version tag.
 
 ## License
 
