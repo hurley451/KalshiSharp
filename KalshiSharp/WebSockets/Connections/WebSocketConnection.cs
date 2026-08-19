@@ -63,17 +63,17 @@ public sealed partial class WebSocketConnection : IWebSocketConnection
                 }
             }
 
-            LogConnecting(uri.ToString());
+            LogConnecting(uri);
 
             await _webSocket.ConnectAsync(uri, cancellationToken).ConfigureAwait(false);
 
             TransitionState(ConnectionState.Connected);
 
-            LogConnected(uri.ToString());
+            LogConnected(uri);
         }
         catch (Exception ex)
         {
-            LogConnectionFailed(uri.ToString(), ex);
+            LogConnectionFailed(uri, ex);
             TransitionState(ConnectionState.Disconnected, ex);
             throw;
         }
@@ -118,7 +118,7 @@ public sealed partial class WebSocketConnection : IWebSocketConnection
         {
             if (_webSocket.State is WebSocketState.Open or WebSocketState.CloseReceived)
             {
-                LogClosing(closeStatus.ToString());
+                LogClosing(closeStatus);
 
                 await _webSocket.CloseAsync(closeStatus, statusDescription, cancellationToken)
                     .ConfigureAwait(false);
@@ -226,7 +226,7 @@ public sealed partial class WebSocketConnection : IWebSocketConnection
             _state = newState;
         }
 
-        LogStateChanged(previousState.ToString(), newState.ToString());
+        LogStateChanged(previousState, newState);
 
         StateChanged?.Invoke(this, new ConnectionStateChangedEventArgs
         {
@@ -241,16 +241,16 @@ public sealed partial class WebSocketConnection : IWebSocketConnection
     // LoggerMessage source-generated logging methods
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Connecting to WebSocket at {Uri}")]
-    private partial void LogConnecting(string uri);
+    private partial void LogConnecting(Uri uri);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "WebSocket connected to {Uri}")]
-    private partial void LogConnected(string uri);
+    private partial void LogConnected(Uri uri);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to connect to WebSocket at {Uri}")]
-    private partial void LogConnectionFailed(string uri, Exception exception);
+    private partial void LogConnectionFailed(Uri uri, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Closing WebSocket with status {CloseStatus}")]
-    private partial void LogClosing(string closeStatus);
+    private partial void LogClosing(WebSocketCloseStatus closeStatus);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "WebSocket closed gracefully")]
     private partial void LogClosed();
@@ -271,5 +271,5 @@ public sealed partial class WebSocketConnection : IWebSocketConnection
     private partial void LogDisposed();
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "WebSocket state changed: {PreviousState} -> {NewState}")]
-    private partial void LogStateChanged(string previousState, string newState);
+    private partial void LogStateChanged(ConnectionState previousState, ConnectionState newState);
 }

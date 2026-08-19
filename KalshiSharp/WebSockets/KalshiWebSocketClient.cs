@@ -126,7 +126,7 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
         using var activity = StartConnectActivity();
 
         var uri = GetWebSocketUri();
-        LogConnecting(uri.ToString());
+        LogConnecting(uri);
 
         try
         {
@@ -146,13 +146,13 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
             _receiveCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _receiveTask = Task.Run(() => ReceiveLoopAsync(_receiveCts.Token), _receiveCts.Token);
 
-            LogConnected(uri.ToString());
+            LogConnected(uri);
             LogAuthenticated();
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
         {
-            LogConnectionFailed(uri.ToString(), ex);
+            LogConnectionFailed(uri, ex);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }
@@ -243,6 +243,41 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
         }
 
         LogUnsubscribed(subscription.Channel);
+    }
+
+    /// <inheritdoc />
+    public async Task UnsubscribeAsync(int subscriptionId, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(subscriptionId);
+        EnsureAuthenticated();
+
+        var command = WebSocketSubscription.ToUnsubscribeCommand(subscriptionId);
+        var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(command, KalshiJsonOptions.Default));
+        await SendAsync(bytes, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateSubscriptionAsync(
+        int subscriptionId,
+        SubscriptionUpdateAction action,
+        IReadOnlyList<string>? marketTickers = null,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(subscriptionId);
+        EnsureAuthenticated();
+
+        var tickers = marketTickers ?? [];
+        if ((action is SubscriptionUpdateAction.AddMarkets or SubscriptionUpdateAction.DeleteMarkets) &&
+            (tickers.Count == 0 || tickers.Any(string.IsNullOrWhiteSpace)))
+        {
+            throw new ArgumentException("Market tickers are required for add and delete actions.", nameof(marketTickers));
+        }
+
+        var command = WebSocketSubscription.ToUpdateCommand(subscriptionId, action, tickers);
+        var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(command, KalshiJsonOptions.Default));
+        await SendAsync(bytes, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -350,7 +385,7 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
         }
         catch (JsonException ex)
         {
-            LogJsonParseError(json, ex);
+            LogJsonParseError(ex);
 
             // Create unknown message for unparseable content
             var unknown = new UnknownMessage
@@ -547,13 +582,13 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
     // Source-generated logging
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Connecting to WebSocket at {Uri}")]
-    private partial void LogConnecting(string uri);
+    private partial void LogConnecting(Uri uri);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "WebSocket connected to {Uri}")]
-    private partial void LogConnected(string uri);
+    private partial void LogConnected(Uri uri);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "WebSocket connection failed to {Uri}")]
-    private partial void LogConnectionFailed(string uri, Exception exception);
+    private partial void LogConnectionFailed(Uri uri, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "WebSocket authenticated")]
     private partial void LogAuthenticated();
@@ -579,8 +614,8 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
     [LoggerMessage(Level = LogLevel.Error, Message = "Error in receive loop")]
     private partial void LogReceiveError(Exception exception);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse WebSocket message: {Json}")]
-    private partial void LogJsonParseError(string json, Exception exception);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse WebSocket message")]
+    private partial void LogJsonParseError(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Attempting reconnect #{Attempt} in {DelaySeconds:F1}s")]
     private partial void LogReconnecting(int attempt, double delaySeconds);

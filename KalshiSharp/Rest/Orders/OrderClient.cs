@@ -68,7 +68,7 @@ internal sealed class OrderClient : IOrderClient
     }
 
     /// <inheritdoc />
-    public Task<OrderResponse> GetOrderAsync(string orderId, CancellationToken cancellationToken = default)
+    public async Task<OrderResponse> GetOrderAsync(string orderId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
 
@@ -78,7 +78,8 @@ internal sealed class OrderClient : IOrderClient
             Path = $"{BasePath}/{Uri.EscapeDataString(orderId)}"
         };
 
-        return _httpClient.SendAsync<OrderResponse>(httpRequest, cancellationToken);
+        var response = await _httpClient.SendAsync<SingleOrderResponse>(httpRequest, cancellationToken).ConfigureAwait(false);
+        return response.Order;
     }
 
     /// <inheritdoc />
@@ -93,5 +94,28 @@ internal sealed class OrderClient : IOrderClient
         };
 
         return _httpClient.SendAsync<OrdersResponse>(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<QueuePositionsResponse> ListQueuePositionsAsync(QueuePositionsQuery? query = null, CancellationToken cancellationToken = default)
+    {
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/queue_positions{query?.ToQueryString() ?? string.Empty}"
+        };
+        return _httpClient.SendAsync<QueuePositionsResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<QueuePositionResponse> GetQueuePositionAsync(string orderId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/{Uri.EscapeDataString(orderId)}/queue_position"
+        };
+        return _httpClient.SendAsync<QueuePositionResponse>(request, cancellationToken);
     }
 }

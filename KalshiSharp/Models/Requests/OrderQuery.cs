@@ -38,6 +38,12 @@ public sealed record OrderQuery : PaginationParameters
     /// </summary>
     public DateTimeOffset? MaxTs { get; init; }
 
+    /// <summary>Filter by subaccount. Omission returns orders for all permitted subaccounts.</summary>
+    public int? Subaccount { get; init; }
+
+    /// <summary>Filter by exchange index when the server supports shard-aware reads.</summary>
+    public int? ExchangeIndex { get; init; }
+
     /// <summary>
     /// Builds the query string for the API request.
     /// </summary>
@@ -55,6 +61,15 @@ public sealed record OrderQuery : PaginationParameters
 
         builder.AppendIfNotEmpty("ticker", Ticker);
         builder.AppendIfNotEmpty("event_ticker", EventTicker);
+
+        if (Subaccount.HasValue)
+        {
+            builder.Append("subaccount", Subaccount.Value.ToString(CultureInfo.InvariantCulture));
+        }
+        if (ExchangeIndex.HasValue)
+        {
+            builder.Append("exchange_index", ExchangeIndex.Value.ToString(CultureInfo.InvariantCulture));
+        }
 
         if (MinTs.HasValue)
         {

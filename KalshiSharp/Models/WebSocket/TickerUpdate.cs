@@ -57,6 +57,18 @@ namespace KalshiSharp.Models.WebSocket
             [JsonPropertyName("yes_ask_dollars")]
             public string? YesAskDollars { get; init; }
 
+            /// <summary>Fixed-point size at the best YES bid.</summary>
+            [JsonPropertyName("yes_bid_size_fp")]
+            public string? YesBidSizeFp { get; init; }
+
+            /// <summary>Fixed-point size at the best YES ask.</summary>
+            [JsonPropertyName("yes_ask_size_fp")]
+            public string? YesAskSizeFp { get; init; }
+
+            /// <summary>Fixed-point size of the last trade.</summary>
+            [JsonPropertyName("last_trade_size_fp")]
+            public string? LastTradeSizeFp { get; init; }
+
             /// <summary>
             /// Number of individual contracts traded on the market so far. YES and NO count separately
             /// </summary>
@@ -86,6 +98,10 @@ namespace KalshiSharp.Models.WebSocket
             /// </summary>
             [JsonPropertyName("ts")]
             public long TimeStamp { get; init; }
+
+            /// <summary>Unix timestamp for the update in milliseconds.</summary>
+            [JsonPropertyName("ts_ms")]
+            public long? TsMs { get; init; }
 
             /// <summary>
             /// Number of dollars traded in the market so far

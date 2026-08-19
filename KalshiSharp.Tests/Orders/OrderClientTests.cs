@@ -23,6 +23,7 @@ public sealed class OrderClientTests : IDisposable
 {
     private readonly WireMockServer _server;
     private readonly OrderClient _client;
+    private readonly OrderClientV2 _clientV2;
     private readonly IKalshiRequestSigner _signer;
 
     public OrderClientTests()
@@ -55,6 +56,7 @@ public sealed class OrderClientTests : IDisposable
             NullLogger<KalshiHttpClient>.Instance);
 
         _client = new OrderClient(kalshiHttpClient);
+        _clientV2 = new OrderClientV2(kalshiHttpClient);
     }
 
     public void Dispose()
@@ -299,21 +301,22 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "order_id": "order-12345",
-                    "client_order_id": "client-order-abc",
-                    "ticker": "MARKET-ABC",
-                    "side": "no",
-                    "type": "market",
-                    "status": "executed",
-                    "action": "sell",
-                    "fill_count": 5,
-                    "initial_count": 5,
-                    "remaining_count": 0,
-                    "yes_price": 45,
-                    "no_price": 55,
-                    "time_in_force": "ioc",
-                    "created_time": 1704067200000,
-                    "fees_paid": 10
+                    "order": {
+                        "order_id": "order-12345",
+                        "client_order_id": "client-order-abc",
+                        "ticker": "MARKET-ABC",
+                        "side": "no",
+                        "type": "market",
+                        "status": "executed",
+                        "action": "sell",
+                        "fill_count": 5,
+                        "initial_count": 5,
+                        "remaining_count": 0,
+                        "yes_price": 45,
+                        "no_price": 55,
+                        "time_in_force": "ioc",
+                        "created_time": 1704067200000
+                    }
                 }
                 """));
 
@@ -605,5 +608,379 @@ public sealed class OrderClientTests : IDisposable
             () => _client.CreateOrderAsync(request));
 
         exception.ErrorCode.Should().Be("unauthorized");
+    }
+
+    [Fact]
+    public async Task CreateOrderV2Async_UsesCurrentEventOrderContract()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders")
+                .WithBody(body => body is not null
+                    && body.Contains("\"side\":\"bid\"")
+                    && body.Contains("\"count\":\"10.00\"")
+                    && body.Contains("\"price\":\"0.5600\"")
+                    && body.Contains("\"time_in_force\":\"good_till_canceled\"")
+                    && body.Contains("\"exchange_index\":-1"))
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(201)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "order_id": "order-v2",
+                    "client_order_id": "client-v2",
+                    "fill_count": "0.00",
+                    "remaining_count": "10.00",
+                    "ts_ms": 1755600000123
+                }
+                """));
+
+        var result = await _clientV2.CreateOrderAsync(new CreateOrderRequestV2
+        {
+            Ticker = "MARKET-ABC",
+            ClientOrderId = "client-v2",
+            Side = OrderBookSide.Bid,
+            Count = "10.00",
+            Price = "0.5600",
+            TimeInForce = EventOrderTimeInForce.GoodTillCanceled,
+            SelfTradePreventionType = SelfTradePreventionType.TakerAtCross,
+            ExchangeIndex = -1
+        });
+
+        result.OrderId.Should().Be("order-v2");
+        result.RemainingCount.Should().Be("10.00");
+        result.TsMs.Should().Be(1755600000123);
+    }
+
+    [Fact]
+    public async Task CancelOrderV2Async_AutoRouteIncludesMarketTicker()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders/order-v2")
+                .WithParam("exchange_index", "-1")
+                .WithParam("market_ticker", "MARKET-ABC")
+                .UsingDelete())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "order_id": "order-v2",
+                    "reduced_by": "10.00",
+                    "ts_ms": 1755600001123
+                }
+                """));
+
+        var result = await _clientV2.CancelOrderAsync("order-v2", new CancelOrderQueryV2
+        {
+            ExchangeIndex = -1,
+            MarketTicker = "MARKET-ABC"
+        });
+
+        result.OrderId.Should().Be("order-v2");
+        result.ReducedBy.Should().Be("10.00");
+    }
+
+    [Fact]
+    public void CancelOrderV2Query_AutoRouteRequiresMarketTicker()
+    {
+        var query = new CancelOrderQueryV2 { ExchangeIndex = -1 };
+
+        var act = query.ToQueryString;
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task DecreaseOrderV2Async_ReduceBy_UsesCurrentContract()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders/order-v2/decrease")
+                .WithParam("subaccount", "0")
+                .WithBody(body => body is not null
+                    && body.Contains("\"reduce_by\":\"2.00\"")
+                    && body.Contains("\"exchange_index\":1")
+                    && !body.Contains("reduce_to"))
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "order_id": "order-v2",
+                    "client_order_id": "client-v2",
+                    "remaining_count": "8.00",
+                    "ts_ms": 1755600002123
+                }
+                """));
+
+        var result = await _clientV2.DecreaseOrderAsync("order-v2", new DecreaseOrderRequestV2
+        {
+            ReduceBy = "2.00",
+            ExchangeIndex = 1
+        }, subaccount: 0);
+
+        result.OrderId.Should().Be("order-v2");
+        result.ClientOrderId.Should().Be("client-v2");
+        result.RemainingCount.Should().Be("8.00");
+        result.TsMs.Should().Be(1755600002123);
+    }
+
+    [Fact]
+    public async Task DecreaseOrderV2Async_ReduceTo_SupportsAutoRouting()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders/order-v2/decrease")
+                .WithBody(body => body is not null
+                    && body.Contains("\"reduce_to\":\"4.00\"")
+                    && body.Contains("\"exchange_index\":-1")
+                    && body.Contains("\"market_ticker\":\"MARKET-ABC\"")
+                    && !body.Contains("reduce_by"))
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "order_id": "order-v2",
+                    "remaining_count": "4.00",
+                    "ts_ms": 1755600003123
+                }
+                """));
+
+        var result = await _clientV2.DecreaseOrderAsync("order-v2", new DecreaseOrderRequestV2
+        {
+            ReduceTo = "4.00",
+            ExchangeIndex = -1,
+            MarketTicker = "MARKET-ABC"
+        });
+
+        result.RemainingCount.Should().Be("4.00");
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("1.00", "2.00")]
+    public async Task DecreaseOrderV2Async_RequiresExactlyOneReduction(string? reduceBy, string? reduceTo)
+    {
+        var request = new DecreaseOrderRequestV2
+        {
+            ReduceBy = reduceBy,
+            ReduceTo = reduceTo
+        };
+
+        var act = () => _clientV2.DecreaseOrderAsync("order-v2", request);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Exactly one of ReduceBy or ReduceTo must be provided.*");
+    }
+
+    [Fact]
+    public async Task BatchCreateOrdersV2Async_UsesCurrentContract()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders/batched")
+                .WithBody(body => body is not null
+                    && body.Contains("\"orders\":[")
+                    && body.Contains("\"client_order_id\":\"client-1\"")
+                    && body.Contains("\"subaccount\":2")
+                    && body.Contains("\"exchange_index\":1"))
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(201)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "orders": [
+                        {
+                            "order_id": "order-1",
+                            "client_order_id": "client-1",
+                            "fill_count": "0.00",
+                            "remaining_count": "10.00",
+                            "ts_ms": 1755600004123
+                        },
+                        {
+                            "order_id": "order-2",
+                            "client_order_id": "client-2",
+                            "fill_count": "5.00",
+                            "remaining_count": "0.00",
+                            "average_fill_price": "0.5800",
+                            "average_fee_paid": "0.0012",
+                            "ts_ms": 1755600004124
+                        }
+                    ]
+                }
+                """));
+
+        var result = await _clientV2.BatchCreateOrdersAsync(new BatchCreateOrdersRequestV2
+        {
+            Orders =
+            [
+                new CreateOrderRequestV2
+                {
+                    Ticker = "MARKET-ABC",
+                    ClientOrderId = "client-1",
+                    Side = OrderBookSide.Bid,
+                    Count = "10.00",
+                    Price = "0.5600",
+                    TimeInForce = EventOrderTimeInForce.GoodTillCanceled,
+                    SelfTradePreventionType = SelfTradePreventionType.TakerAtCross,
+                    Subaccount = 2,
+                    ExchangeIndex = 1
+                },
+                new CreateOrderRequestV2
+                {
+                    Ticker = "MARKET-ABC",
+                    ClientOrderId = "client-2",
+                    Side = OrderBookSide.Ask,
+                    Count = "5.00",
+                    Price = "0.5800",
+                    TimeInForce = EventOrderTimeInForce.ImmediateOrCancel,
+                    SelfTradePreventionType = SelfTradePreventionType.Maker,
+                    Subaccount = 2,
+                    ExchangeIndex = 1
+                }
+            ]
+        });
+
+        result.Orders.Should().HaveCount(2);
+        result.Orders[1].AverageFillPrice.Should().Be("0.5800");
+        result.Orders[1].AverageFeePaid.Should().Be("0.0012");
+    }
+
+    [Fact]
+    public async Task BatchCancelOrdersV2Async_UsesCurrentContract()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders/batched")
+                .WithBody(body => body is not null
+                    && body.Contains("\"order_id\":\"order-1\"")
+                    && body.Contains("\"subaccount\":0")
+                    && body.Contains("\"exchange_index\":1"))
+                .UsingDelete())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "orders": [
+                        {
+                            "order_id": "order-1",
+                            "client_order_id": "client-1",
+                            "reduced_by": "10.00",
+                            "ts_ms": 1755600005123
+                        },
+                        {
+                            "order_id": "order-2",
+                            "client_order_id": "client-2",
+                            "reduced_by": "5.00",
+                            "ts_ms": 1755600005124
+                        }
+                    ]
+                }
+                """));
+
+        var result = await _clientV2.BatchCancelOrdersAsync(new BatchCancelOrdersRequestV2
+        {
+            Orders =
+            [
+                new BatchCancelOrderItemV2
+                {
+                    OrderId = "order-1",
+                    Subaccount = 0,
+                    ExchangeIndex = 1
+                },
+                new BatchCancelOrderItemV2
+                {
+                    OrderId = "order-2",
+                    Subaccount = 0,
+                    ExchangeIndex = 1
+                }
+            ]
+        });
+
+        result.Orders.Should().HaveCount(2);
+        result.Orders[0].ReducedBy.Should().Be("10.00");
+        result.Orders[1].TsMs.Should().Be(1755600005124);
+    }
+
+    [Fact]
+    public async Task GetOrderAsync_CurrentPayload_ParsesFixedPointFields()
+    {
+        const string orderId = "order-current";
+        _server.Given(Request.Create()
+                .WithPath($"/trade-api/v2/portfolio/orders/{orderId}")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "order": {
+                        "order_id": "order-current",
+                        "ticker": "MARKET-ABC",
+                        "fill_count_fp": "1.50",
+                        "remaining_count_fp": "8.50",
+                        "initial_count_fp": "10.00",
+                        "yes_price_dollars": "0.5600",
+                        "subaccount_number": 2,
+                        "exchange_index": 1,
+                        "last_update_reason": "PostOnlyCrossCancel"
+                    }
+                }
+                """));
+
+        var result = await _client.GetOrderAsync(orderId);
+
+        result.FillCountFp.Should().Be("1.50");
+        result.RemainingCountFp.Should().Be("8.50");
+        result.SubaccountNumber.Should().Be(2);
+        result.ExchangeIndex.Should().Be(1);
+        result.LastUpdateReason.Should().Be("PostOnlyCrossCancel");
+    }
+
+    [Fact]
+    public async Task ListQueuePositionsAsync_AppliesFiltersAndParsesFixedPointPosition()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/orders/queue_positions")
+                .WithParam("event_ticker", "EVENT-1")
+                .WithParam("subaccount", "0")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"queue_positions":[{"order_id":"order-1","market_ticker":"MARKET-1","queue_position_fp":"3.50"}]}"""));
+
+        var result = await _client.ListQueuePositionsAsync(new QueuePositionsQuery
+        {
+            EventTicker = "EVENT-1",
+            Subaccount = 0,
+            MarketTickers = ["MARKET-1"]
+        });
+
+        result.QueuePositions.Should().ContainSingle();
+        result.QueuePositions[0].QueuePositionFp.Should().Be("3.50");
+    }
+
+    [Fact]
+    public void QueuePositionsQuery_JoinsMarketTickersAsDocumented()
+    {
+        var query = new QueuePositionsQuery { MarketTickers = ["MARKET-A", "MARKET-B"] };
+
+        query.ToQueryString().Should().Be("?market_tickers=MARKET-A%2CMARKET-B");
+    }
+
+    [Fact]
+    public async Task GetQueuePositionAsync_UsesOrderIdPath()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/orders/order-1/queue_position")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"queue_position_fp":"7.25"}"""));
+
+        var result = await _client.GetQueuePositionAsync("order-1");
+        result.QueuePositionFp.Should().Be("7.25");
     }
 }

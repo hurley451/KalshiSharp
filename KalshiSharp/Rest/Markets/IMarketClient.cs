@@ -33,6 +33,10 @@ public interface IMarketClient
     /// <returns>The order book for the market.</returns>
     Task<OrderBookResponse> GetOrderBookAsync(string ticker, int? depth = null, CancellationToken cancellationToken = default);
 
+    /// <summary>Gets order books for up to 100 markets.</summary>
+    Task<MultipleOrderBooksResponse> GetOrderBooksAsync(MultipleOrderBooksQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This market client does not support multiple order books.");
+
     /// <summary>
     /// Gets trades for a market.
     /// </summary>
@@ -42,4 +46,29 @@ public interface IMarketClient
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A paginated list of trades.</returns>
     Task<TradesResponse> GetTradesAsync(string ticker, string? cursor = null, int? limit = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Gets public trades using the current filter contract.</summary>
+    Task<TradesResponse> GetTradesAsync(MarketTradeQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This market client does not support the current trade query contract.");
+
+    /// <summary>
+    /// Gets candlesticks for a market.
+    /// </summary>
+    /// <param name="seriesTicker">Series ticker - the series that contains the target market</param>
+    /// <param name="ticker">Market ticker - unique identifier for the specific market</param>
+    /// <param name="query">Query parameters</param>
+    ///  /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns></returns>
+    Task<MarketCandlesticksResponse> GetMarketCandlesticksAsync(string seriesTicker, string ticker, MarketCandlesticksQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This market client does not support market candlesticks.");
+
+    /// <summary>
+    /// Gets candlesticks for multiple markets in a single request.
+    /// Accepts up to 100 market tickers and returns up to 10,000 candlesticks total.
+    /// </summary>
+    /// <param name="query">Query parameters including the list of market tickers.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Candlestick data grouped by market ticker.</returns>
+    Task<BatchMarketCandlesticksResponse> GetBatchMarketCandlesticksAsync(BatchMarketCandlesticksQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This market client does not support batch market candlesticks.");
 }

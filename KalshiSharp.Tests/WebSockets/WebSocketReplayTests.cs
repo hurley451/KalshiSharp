@@ -169,6 +169,111 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task UnsubscribeAsync_BySubscriptionId_SendsServerAssignedId()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        await _client.UnsubscribeAsync(42);
+
+        var lastMessage = _mockConnection.SentMessages[^1];
+        lastMessage.Should().Contain("\"cmd\":\"unsubscribe\"");
+        lastMessage.Should().Contain("\"sids\":[42]");
+        lastMessage.Should().NotContain("\"channels\"");
+    }
+
+    [Fact]
+    public async Task SubscribeAsync_TickerCanSkipInitialAcknowledgement()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        await _client.SubscribeAsync(new TickerSubscription
+        {
+            Markets = ["MARKET-XYZ"],
+            SkipTickerAck = true
+        });
+
+        _mockConnection.SentMessages[^1].Should().Contain("\"skip_ticker_ack\":true");
+    }
+
+    [Fact]
+    public async Task UpdateSubscriptionAsync_SendsSnapshotRefreshCommand()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        await _client.UpdateSubscriptionAsync(17, SubscriptionUpdateAction.GetSnapshot, ["MARKET-1"]);
+
+        var command = _mockConnection.SentMessages[^1];
+        command.Should().Contain("\"cmd\":\"update_subscription\"");
+        command.Should().Contain("\"sids\":[17]");
+        command.Should().Contain("\"action\":\"get_snapshot\"");
+        command.Should().Contain("\"market_tickers\":[\"MARKET-1\"]");
+    }
+
+    [Fact]
+    public async Task SubscribeAsync_LifecycleChannel_DoesNotAddMarketFilter()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        await _client.SubscribeAsync(new MarketLifecycleSubscription());
+
+        var command = _mockConnection.SentMessages[^1];
+        command.Should().Contain("\"channels\":[\"market_lifecycle_v2\"]");
+        command.Should().NotContain("market_tickers");
+    }
+
+    [Theory]
+    [InlineData("market_lifecycle_v2", typeof(MarketLifecycleUpdate))]
+    [InlineData("multivariate_market_lifecycle", typeof(MultivariateMarketLifecycleUpdate))]
+    public void LifecycleMarketMessages_DeserializeCurrentSchema(string type, Type expectedType)
+    {
+        var json = """
+        {
+          "type":"MESSAGE_TYPE",
+          "sid":3,
+          "msg":{
+            "market_ticker":"MARKET-1",
+            "event_type":"price_level_structure_updated",
+            "exchange_index":1,
+            "settlement_value":"1.0000",
+            "price_level_structure":"custom",
+            "price_ranges":[{"start":"0.0000","end":"1.0000","step":"0.0010"}],
+            "additional_metadata":{"event_ticker":"EVENT-1","strike_type":"greater","custom_strike":{"value":"10.5"}}
+          }
+        }
+        """.Replace("MESSAGE_TYPE", type, StringComparison.Ordinal);
+
+        var result = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default);
+
+        result.Should().BeOfType(expectedType);
+        var body = result switch
+        {
+            MarketLifecycleUpdate standard => standard.Message,
+            MultivariateMarketLifecycleUpdate multivariate => multivariate.Message,
+            _ => throw new InvalidOperationException()
+        };
+        body.ExchangeIndex.Should().Be(1);
+        body.PriceRanges.Should().ContainSingle();
+        body.AdditionalMetadata!.CustomStrike.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void EventLifecycleAndFeeMessages_Deserialize()
+    {
+        const string eventJson = """{"type":"event_lifecycle","msg":{"event_ticker":"EVENT-1","exchange_index":2,"title":"Event","series_ticker":"SERIES"}}""";
+        const string feeJson = """{"type":"event_fee_update","msg":{"event_ticker":"EVENT-1","fee_type_override":"quadratic","fee_multiplier_override":1.25}}""";
+
+        var lifecycle = JsonSerializer.Deserialize<WebSocketMessage>(eventJson, KalshiJsonOptions.Default);
+        var fee = JsonSerializer.Deserialize<WebSocketMessage>(feeJson, KalshiJsonOptions.Default);
+
+        lifecycle.Should().BeOfType<EventLifecycleUpdate>().Which.Message.ExchangeIndex.Should().Be(2);
+        fee.Should().BeOfType<EventFeeUpdate>().Which.Message.FeeMultiplierOverride.Should().Be(1.25m);
+    }
+
+    [Fact]
     public async Task Messages_ReceivesOrderBookUpdate()
     {
         // Arrange
@@ -283,7 +388,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
                 "type": "trade",
                 "seq": 999,
                 "msg": {
-                    "ts": 1704067200000,
+                    "ts": 1704067200,
                     "market_ticker": "MARKET-XYZ",
                     "market_id": "6F31765E-D070-41B9-A6EA-6AF3274B362B",
                     "trade_id": "trade-123",
@@ -327,6 +432,135 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
     }
 
     [Fact]
+    public void CurrentTradePayload_UsesMillisecondTimestampAndFixedPointFields()
+    {
+        const string json = """
+            {
+              "type": "trade",
+              "seq": 1000,
+              "msg": {
+                "trade_id": "trade-current",
+                "market_ticker": "KXTEST-26AUG19",
+                "yes_price_dollars": "0.4325",
+                "no_price_dollars": "0.5675",
+                "count_fp": "10.50",
+                "is_block_trade": true,
+                "taker_outcome_side": "yes",
+                "taker_book_side": "bid",
+                "ts": 1787155200,
+                "ts_ms": 1787155200123
+              }
+            }
+            """;
+
+        var message = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default);
+
+        var trade = message.Should().BeOfType<TradeUpdate>().Subject;
+        trade.Message.YesPriceDollars.Should().Be("0.4325");
+        trade.Message.CountFp.Should().Be("10.50");
+        trade.Message.IsBlockTrade.Should().BeTrue();
+        trade.Message.TakerOutcomeSide.Should().Be(OrderSide.Yes);
+        trade.Message.TakerBookSide.Should().Be(OrderBookSide.Bid);
+        trade.Message.TimeStamp.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1787155200123));
+    }
+
+    [Fact]
+    public void CurrentOrderBookDelta_DeserializesWithoutRemovedIntegerFields()
+    {
+        const string json = """
+            {
+              "type": "orderbook_delta",
+              "seq": 3,
+              "msg": {
+                "market_ticker": "KXTEST-26AUG19",
+                "market_id": "9b0f6b43-5b68-4f9f-9f02-9a2d1b8ac1a1",
+                "price_dollars": "0.4325",
+                "delta_fp": "-54.00",
+                "side": "yes",
+                "last_update_reason": "PostOnlyCrossCancel",
+                "ts_ms": 1787155200123
+              }
+            }
+            """;
+
+        var update = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default)
+            .Should().BeOfType<OrderBookUpdate>().Subject;
+
+        update.Message.PriceDollars.Should().Be("0.4325");
+        update.Message.DeltaFp.Should().Be("-54.00");
+        update.Message.LastUpdateReason.Should().Be("PostOnlyCrossCancel");
+        update.Message.TsMs.Should().Be(1787155200123);
+    }
+
+    [Fact]
+    public void CurrentPrivateChannelPayloads_DeserializeWithoutLegacyFields()
+    {
+        const string orderJson = """
+            {
+              "type": "user_order",
+              "msg": {
+                "order_id": "order-current",
+                "ticker": "KXTEST-26AUG19",
+                "is_yes": true,
+                "outcome_side": "yes",
+                "book_side": "bid",
+                "yes_price_dollars": "0.4325",
+                "taker_fill_cost_dollars": "2.5950",
+                "maker_fill_cost_dollars": "0.0000",
+                "initial_count_fp": "10.00",
+                "remaining_count_fp": "4.00",
+                "fill_count_fp": "6.00",
+                "created_ts_ms": 1787155200123,
+                "last_updated_ts_ms": 1787155200456
+              }
+            }
+            """;
+        const string fillJson = """
+            {
+              "type": "fill",
+              "msg": {
+                "trade_id": "trade-current",
+                "order_id": "order-current",
+                "market_ticker": "KXTEST-26AUG19",
+                "is_taker": true,
+                "outcome_side": "yes",
+                "book_side": "bid",
+                "yes_price_dollars": "0.4325",
+                "count_fp": "6.00",
+                "ts_ms": 1787155200456
+              }
+            }
+            """;
+        const string positionJson = """
+            {
+              "type": "market_position",
+              "msg": {
+                "user_id": "user-current",
+                "market_ticker": "KXTEST-26AUG19",
+                "position_fp": "6.00",
+                "position_cost_dollars": "2.5950",
+                "ts_ms": 1787155200456
+              }
+            }
+            """;
+
+        var order = JsonSerializer.Deserialize<WebSocketMessage>(orderJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<UserOrderUpdate>().Subject;
+        var fill = JsonSerializer.Deserialize<WebSocketMessage>(fillJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<FillUpdate>().Subject;
+        var position = JsonSerializer.Deserialize<WebSocketMessage>(positionJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<MarketPositionUpdate>().Subject;
+
+        order.Message.RemainingCountFp.Should().Be("4.00");
+        order.Message.IsYes.Should().BeTrue();
+        order.Message.TakerFillCostDollars.Should().Be("2.5950");
+        order.Message.LastUpdatedTsMs.Should().Be(1787155200456);
+        fill.Message.CountFp.Should().Be("6.00");
+        fill.Message.OutcomeSide.Should().Be(OrderSide.Yes);
+        position.Message.PositionFp.Should().Be("6.00");
+    }
+
+    [Fact]
     public async Task Messages_ReceivesSubscriptionConfirmation()
     {
         // Arrange
@@ -337,7 +571,8 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
                 "type": "subscribed",
                 "msg": {
-                  "channel": "orderbook_delta"
+                  "channel": "orderbook_delta",
+                  "sid": 42
                 }
             }
             """;
@@ -367,6 +602,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         // Assert
         var confirm = messages[0].Should().BeOfType<SubscriptionConfirmation>().Subject;
         confirm.Message.Channel!.Should().Be("orderbook_delta");
+        confirm.Message.Sid.Should().Be(42);
     }
 
     [Fact]
@@ -409,9 +645,27 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         }
 
         // Assert
-        var error = messages[0].Should().BeOfType<ErrorMessage>().Subject;
+        var error = messages[0].Should().BeOfType<ErrorMessageV2>().Subject;
         error.Message.Code.Should().Be(100);
         error.Message.ErrorMessage.Should().Be("Market not found");
+    }
+
+    [Fact]
+    public void DeserializeError_SupportsPublishedFlatEnvelope()
+    {
+        const string json = """
+            {
+              "type": "error",
+              "code": "invalid_request",
+              "msg": "Ticker is required"
+            }
+            """;
+
+        var error = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default)
+            .Should().BeOfType<ErrorMessage>().Subject;
+
+        error.Code.Should().Be("invalid_request");
+        error.Message.Should().Be("Ticker is required");
     }
 
     [Fact]
@@ -527,6 +781,9 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
                     "price_dollars": "0.55",
                     "yes_bid_dollars": "0.54",
                     "yes_ask_dollars": "0.56",
+                    "yes_bid_size_fp": "12.50",
+                    "yes_ask_size_fp": "8.25",
+                    "last_trade_size_fp": "2.00",
                     "volume": 10000,
                     "volume_fp": 10000.00,
                     "open_interest": 5000,
@@ -568,6 +825,9 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         tickerUpdate.Message.Price.Should().Be(55);
         tickerUpdate.Message.YesBid.Should().Be(54);
         tickerUpdate.Message.YesAsk.Should().Be(56);
+        tickerUpdate.Message.YesBidSizeFp.Should().Be("12.50");
+        tickerUpdate.Message.YesAskSizeFp.Should().Be("8.25");
+        tickerUpdate.Message.LastTradeSizeFp.Should().Be("2.00");
         tickerUpdate.Message.Volume.Should().Be(10000);
         tickerUpdate.Message.OpenInterest.Should().Be(5000);
         tickerUpdate.Message.TimeStamp.Should().Be(1771526292);

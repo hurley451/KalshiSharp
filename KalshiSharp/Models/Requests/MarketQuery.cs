@@ -44,6 +44,11 @@ public sealed record MarketQuery : PaginationParameters
     public DateTimeOffset? MaxCloseTs { get; init; }
 
     /// <summary>
+    /// Only returns markets updated at or after this time.
+    /// </summary>
+    public DateTimeOffset? MinUpdatedTs { get; init; }
+
+    /// <summary>
     /// Filter for multivariate events (combos/parlays).
     /// Use "exclude" to filter out MVE markets, "only" to return only MVE markets.
     /// </summary>
@@ -94,6 +99,11 @@ public sealed record MarketQuery : PaginationParameters
         if (MaxCloseTs.HasValue)
         {
             builder.Append("max_close_ts", MaxCloseTs.Value.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (MinUpdatedTs.HasValue)
+        {
+            builder.Append("min_updated_ts", MinUpdatedTs.Value.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
         }
 
         builder.AppendIfNotEmpty("mve_filter", MveFilter);

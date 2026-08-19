@@ -11,6 +11,44 @@ public sealed record TradeUpdate : WebSocketMessage<TradeUpdate.MessageBody>
     /// <inheritdoc/>
     public override string Type => "trade";
 
+    /// <summary>Legacy flat trade identifier.</summary>
+    [JsonPropertyName("trade_id")]
+    public string TradeId { get; init; } = string.Empty;
+
+    /// <summary>Legacy flat market ticker.</summary>
+    [JsonPropertyName("market_ticker")]
+    public string MarketTicker { get; init; } = string.Empty;
+
+    /// <summary>Legacy flat outcome side.</summary>
+    [JsonPropertyName("side")]
+    public OrderSide Side { get; init; }
+
+    /// <summary>Legacy flat YES price in cents.</summary>
+    [JsonPropertyName("yes_price")]
+    public int YesPrice { get; init; }
+
+    /// <summary>Legacy flat NO price in cents.</summary>
+    [JsonPropertyName("no_price")]
+    public int NoPrice { get; init; }
+
+    /// <summary>Legacy flat integer contract count.</summary>
+    [JsonPropertyName("count")]
+    public int Count { get; init; }
+
+    /// <summary>Legacy flat taker side.</summary>
+    [JsonPropertyName("taker_side")]
+    public string? TakerSide { get; init; }
+
+    /// <summary>Legacy flat creation timestamp in Unix milliseconds.</summary>
+    [JsonPropertyName("created_time")]
+    public long? CreatedTimeMs { get; init; }
+
+    /// <summary>Gets the legacy creation time as UTC.</summary>
+    [JsonIgnore]
+    public DateTimeOffset? CreatedTime => CreatedTimeMs.HasValue
+        ? DateTimeOffset.FromUnixTimeMilliseconds(CreatedTimeMs.Value)
+        : null;
+
     public sealed record MessageBody
     {
         /// <summary>
@@ -29,25 +67,37 @@ public sealed record TradeUpdate : WebSocketMessage<TradeUpdate.MessageBody>
         /// Side of the trade (Yes or No).
         /// </summary>
         [JsonPropertyName("side")]
-        public required OrderSide Side { get; init; }
+        public OrderSide Side { get; init; }
 
         /// <summary>
         /// Price at which the trade executed (in cents).
         /// </summary>
         [JsonPropertyName("yes_price")]
-        public required int YesPrice { get; init; }
+        public int YesPrice { get; init; }
 
         /// <summary>
         /// No price (derived from yes price, typically 100 - yes_price).
         /// </summary>
         [JsonPropertyName("no_price")]
-        public required int NoPrice { get; init; }
+        public int NoPrice { get; init; }
 
         /// <summary>
         /// Number of contracts traded.
         /// </summary>
         [JsonPropertyName("count")]
-        public required int Count { get; init; }
+        public int Count { get; init; }
+
+        /// <summary>YES execution price in dollars.</summary>
+        public string? YesPriceDollars { get; init; }
+
+        /// <summary>NO execution price in dollars.</summary>
+        public string? NoPriceDollars { get; init; }
+
+        /// <summary>Traded quantity as a fixed-point count.</summary>
+        public string? CountFp { get; init; }
+
+        /// <summary>Whether this trade was a block trade.</summary>
+        public bool IsBlockTrade { get; init; }
 
         /// <summary>
         /// Taker side of the trade.
@@ -55,18 +105,30 @@ public sealed record TradeUpdate : WebSocketMessage<TradeUpdate.MessageBody>
         [JsonPropertyName("taker_side")]
         public string? TakerSide { get; init; }
 
+        /// <summary>Canonical outcome side of the taker.</summary>
+        public OrderSide? TakerOutcomeSide { get; init; }
+
+        /// <summary>Canonical order-book side of the taker.</summary>
+        public OrderBookSide? TakerBookSide { get; init; }
+
         /// <summary>
         /// When this trade occurred (Unix milliseconds).
         /// </summary>
         [JsonPropertyName("ts")]
         public long? TimeStampMs { get; init; }
 
+        /// <summary>Current timestamp in Unix milliseconds.</summary>
+        [JsonPropertyName("ts_ms")]
+        public long? TsMs { get; init; }
+
         /// <summary>
         /// Gets the trade creation time as a DateTimeOffset.
         /// </summary>
         [JsonIgnore]
-        public DateTimeOffset? TimeStamp => TimeStampMs.HasValue
-            ? DateTimeOffset.FromUnixTimeMilliseconds(TimeStampMs.Value)
-            : null;
+        public DateTimeOffset? TimeStamp => TsMs.HasValue
+            ? DateTimeOffset.FromUnixTimeMilliseconds(TsMs.Value)
+            : TimeStampMs.HasValue
+                ? DateTimeOffset.FromUnixTimeSeconds(TimeStampMs.Value)
+                : null;
     }
 }

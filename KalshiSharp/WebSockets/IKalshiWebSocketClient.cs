@@ -56,4 +56,20 @@ public interface IKalshiWebSocketClient : IAsyncDisposable
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <exception cref="InvalidOperationException">Thrown when not connected.</exception>
     Task UnsubscribeAsync(WebSocketSubscription subscription, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unsubscribes from a server-assigned subscription identifier.
+    /// </summary>
+    /// <param name="subscriptionId">The subscription identifier returned by the server.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task UnsubscribeAsync(int subscriptionId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This WebSocket client does not support identifier-based unsubscription.");
+
+    /// <summary>Updates an existing subscription by server-assigned subscription identifier.</summary>
+    Task UpdateSubscriptionAsync(
+        int subscriptionId,
+        SubscriptionUpdateAction action,
+        IReadOnlyList<string>? marketTickers = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This WebSocket client does not support subscription updates.");
 }

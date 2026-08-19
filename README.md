@@ -4,8 +4,8 @@ A production-grade .NET 8 SDK for the [Kalshi](https://kalshi.com) prediction ma
 
 ## Features
 
-- **Full API Coverage**: REST endpoints for exchange, markets, events, orders, portfolio, and users
-- **Real-time WebSocket**: Order book, trade, and order update subscriptions with auto-reconnect
+- **Core API Coverage**: REST clients for exchange, markets, events, orders, portfolio, users, and historical data
+- **Real-time WebSocket**: Order book, ticker, trade, fill, position, and user-order subscriptions with auto-reconnect
 - **Async-First**: All operations are async/await with proper cancellation support
 - **Thread-Safe**: Safe for concurrent use from multiple threads
 - **Strongly Typed**: Complete type coverage with nullable reference types enabled
@@ -91,7 +91,7 @@ var page1 = await client.Markets.ListMarketsAsync(query);
 foreach (var market in page1.Items)
 {
     Console.WriteLine($"{market.Ticker}: {market.Title}");
-    Console.WriteLine($"  Yes: {market.YesBid}c / {market.YesAsk}c");
+    Console.WriteLine($"  Yes: ${market.YesBidDollars} / ${market.YesAskDollars}");
 }
 
 // Fetch next page
@@ -106,13 +106,13 @@ if (page1.HasMore)
 ```csharp
 var orderBook = await client.Markets.GetOrderBookAsync("TICKER-ABC");
 
-Console.WriteLine($"Yes levels: {orderBook.Orderbook.Yes.Count}");
-Console.WriteLine($"No levels: {orderBook.Orderbook.No.Count}");
+Console.WriteLine($"Yes levels: {orderBook.OrderbookFp.YesDollars.Count}");
+Console.WriteLine($"No levels: {orderBook.OrderbookFp.NoDollars.Count}");
 
-// Each level is [price, quantity]
-foreach (var level in orderBook.Orderbook.Yes)
+// Each level is [fixed-point dollar price, fixed-point quantity]
+foreach (var level in orderBook.OrderbookFp.YesDollars)
 {
-    Console.WriteLine($"  {level[0]}c: {level[1]} contracts");
+    Console.WriteLine($"  ${level[0]}: {level[1]} contracts");
 }
 ```
 
@@ -121,23 +121,31 @@ foreach (var level in orderBook.Orderbook.Yes)
 ```csharp
 using KalshiSharp.Models.Requests;
 
-// Create a limit order
-var request = new CreateOrderRequest
+// Create an order through the current V2 event-order API
+var request = new CreateOrderRequestV2
 {
     Ticker = "TICKER-ABC",
-    Side = OrderSide.Yes,
-    Action = "buy",
-    Type = OrderType.Limit,
-    Count = 10,
-    YesPrice = 45, // 45 cents
-    ClientOrderId = Guid.NewGuid().ToString("N")
+    Side = OrderBookSide.Bid,
+    Count = "10.00",
+    Price = "0.4500",
+    TimeInForce = EventOrderTimeInForce.GoodTillCanceled,
+    SelfTradePreventionType = SelfTradePreventionType.TakerAtCross,
+    ClientOrderId = Guid.NewGuid().ToString("N"),
+    ExchangeIndex = -1 // auto-route by ticker
 };
 
-var order = await client.Orders.CreateOrderAsync(request);
-Console.WriteLine($"Order ID: {order.OrderId}, Status: {order.Status}");
+var ordersV2 = client.OrdersV2
+    ?? throw new NotSupportedException("This client does not provide the V2 order capability.");
+
+var order = await ordersV2.CreateOrderAsync(request);
+Console.WriteLine($"Order ID: {order.OrderId}, remaining: {order.RemainingCount}");
 
 // Cancel the order
-var cancelled = await client.Orders.CancelOrderAsync(order.OrderId);
+var cancelled = await ordersV2.CancelOrderAsync(order.OrderId, new CancelOrderQueryV2
+{
+    ExchangeIndex = -1,
+    MarketTicker = request.Ticker
+});
 ```
 
 ### Portfolio Information
@@ -145,17 +153,35 @@ var cancelled = await client.Orders.CancelOrderAsync(order.OrderId);
 ```csharp
 // Get balance
 var balance = await client.Portfolio.GetBalanceAsync();
-Console.WriteLine($"Balance: ${balance.Balance / 100m:F2}");
+Console.WriteLine($"Balance: ${balance.BalanceDollars}");
 
 // List positions
 var positions = await client.Portfolio.ListPositionsAsync();
 foreach (var position in positions.Items)
 {
-    Console.WriteLine($"{position.Ticker}: {position.Position} contracts");
+    Console.WriteLine($"{position.Ticker}: {position.PositionFp} contracts");
 }
 
 // List fills
 var fills = await client.Portfolio.ListFillsAsync();
+```
+
+### Historical Data
+
+Historical access is explicit. Existing live methods are never rerouted automatically.
+
+```csharp
+var historical = client.Historical
+    ?? throw new NotSupportedException("This client does not provide historical data access.");
+
+var cutoff = await historical.GetCutoffAsync();
+Console.WriteLine($"Markets before {cutoff.MarketSettledTs:u} are historical");
+
+var archived = await historical.ListMarketsAsync(new HistoricalMarketQuery
+{
+    SeriesTicker = "KXHIGHNY",
+    Limit = 100
+});
 ```
 
 ### WebSocket Real-Time Updates
@@ -184,14 +210,14 @@ await foreach (var message in wsClient.Messages)
 {
     switch (message)
     {
-        case OrderBookSnapshotMessage snapshot:
-            Console.WriteLine($"Snapshot: {snapshot.MarketTicker}");
+        case OrderBookSnapshot snapshot:
+            Console.WriteLine($"Snapshot: {snapshot.Message.MarketTicker}");
             break;
         case OrderBookUpdate update:
-            Console.WriteLine($"Delta: {update.Price}c, {update.Delta}");
+            Console.WriteLine($"Delta: ${update.Message.PriceDollars}, {update.Message.DeltaFp}");
             break;
         case TradeUpdate trade:
-            Console.WriteLine($"Trade: {trade.Count} @ {trade.YesPrice}c");
+            Console.WriteLine($"Trade: {trade.Message.CountFp} @ ${trade.Message.YesPriceDollars}");
             break;
     }
 }
@@ -244,6 +270,7 @@ catch (KalshiException ex)
 | `Timeout` | 30s | HTTP request timeout |
 | `ClockSkewTolerance` | 30s | Tolerance for timestamp validation |
 | `EnableRateLimiting` | true | Enable client-side rate limiting |
+| `RateLimits` | Basic tier: read burst 200, write burst 100 | Separate read, unscoped-write, and shard-write token budgets; override after checking account limits |
 
 ## Project Structure
 
@@ -263,6 +290,7 @@ KalshiSharp/
 │   ├── RateLimiting/              # Token bucket limiter
 │   ├── Rest/                      # REST API clients
 │   │   ├── Exchange/
+│   │   ├── Historical/
 │   │   ├── Markets/
 │   │   ├── Events/
 │   │   ├── Orders/

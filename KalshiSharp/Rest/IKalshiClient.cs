@@ -1,9 +1,11 @@
 using KalshiSharp.Rest.Events;
 using KalshiSharp.Rest.Exchange;
+using KalshiSharp.Rest.Historical;
 using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
 using KalshiSharp.Rest.Users;
+using KalshiSharp.Rest.Account;
 
 namespace KalshiSharp.Rest;
 
@@ -12,6 +14,8 @@ namespace KalshiSharp.Rest;
 /// </summary>
 public interface IKalshiClient : IDisposable
 {
+    /// <summary>Gets account usage and rate-limit discovery when supported.</summary>
+    IAccountClient? Account => null;
     /// <summary>
     /// Gets the exchange client for status and schedule endpoints.
     /// </summary>
@@ -31,6 +35,16 @@ public interface IKalshiClient : IDisposable
     /// Gets the orders client for order management endpoints.
     /// </summary>
     IOrderClient Orders { get; }
+
+    /// <summary>
+    /// Gets the active V2 event-order mutation client when the implementation supports it.
+    /// </summary>
+    IOrderClientV2? OrdersV2 => null;
+
+    /// <summary>
+    /// Gets the explicit historical-data client when the implementation supports it.
+    /// </summary>
+    IHistoricalClient? Historical => null;
 
     /// <summary>
     /// Gets the portfolio client for balance, positions, and fills endpoints.

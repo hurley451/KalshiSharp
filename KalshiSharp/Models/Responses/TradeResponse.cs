@@ -20,22 +20,34 @@ public sealed record TradeResponse
     /// <summary>
     /// Side of the trade (Yes or No).
     /// </summary>
-    public required OrderSide Side { get; init; }
+    public OrderSide Side { get; init; }
 
     /// <summary>
     /// Price at which the trade executed (in cents).
     /// </summary>
-    public required int YesPrice { get; init; }
+    public int YesPrice { get; init; }
 
     /// <summary>
     /// No price (derived from yes price).
     /// </summary>
-    public required int NoPrice { get; init; }
+    public int NoPrice { get; init; }
 
     /// <summary>
     /// Number of contracts traded.
     /// </summary>
-    public required int Count { get; init; }
+    public int Count { get; init; }
+
+    /// <summary>Number of contracts traded as a fixed-point count.</summary>
+    public string? CountFp { get; init; }
+
+    /// <summary>YES price in dollars.</summary>
+    public string? YesPriceDollars { get; init; }
+
+    /// <summary>NO price in dollars.</summary>
+    public string? NoPriceDollars { get; init; }
+
+    /// <summary>Whether this trade was a block trade.</summary>
+    public bool IsBlockTrade { get; init; }
 
     /// <summary>
     /// When this trade occurred.
@@ -46,4 +58,10 @@ public sealed record TradeResponse
     /// Taker side of the trade.
     /// </summary>
     public string? TakerSide { get; init; }
+
+    /// <summary>Canonical outcome side of the taker.</summary>
+    public OrderSide? TakerOutcomeSide { get; init; }
+
+    /// <summary>Canonical order-book side of the taker.</summary>
+    public OrderBookSide? TakerBookSide { get; init; }
 }

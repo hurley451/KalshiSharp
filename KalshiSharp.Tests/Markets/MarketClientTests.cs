@@ -183,6 +183,7 @@ public sealed class MarketClientTests : IDisposable
                 .WithPath("/trade-api/v2/markets")
                 .WithParam("status", "open")
                 .WithParam("event_ticker", "EVENT-123")
+                .WithParam("min_updated_ts", "1767225600")
                 .WithParam("limit", "50")
                 .UsingGet())
             .RespondWith(Response.Create()
@@ -199,6 +200,7 @@ public sealed class MarketClientTests : IDisposable
         {
             Status = MarketStatus.Active,
             EventTicker = "EVENT-123",
+            MinUpdatedTs = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             Limit = 50
         };
 
@@ -324,7 +326,8 @@ public sealed class MarketClientTests : IDisposable
         // Arrange
         const string ticker = "MARKET-ABC";
         _server.Given(Request.Create()
-                .WithPath($"/trade-api/v2/markets/{ticker}/trades")
+                .WithPath("/trade-api/v2/markets/trades")
+                .WithParam("ticker", ticker)
                 .UsingGet())
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
@@ -335,11 +338,11 @@ public sealed class MarketClientTests : IDisposable
                         {
                             "trade_id": "trade-001",
                             "ticker": "MARKET-ABC",
-                            "side": "yes",
-                            "yes_price": 55,
-                            "no_price": 45,
-                            "count": 10,
-                            "created_time": 1704067200000
+                            "count_fp": "10.00",
+                            "yes_price_dollars": "0.5500",
+                            "no_price_dollars": "0.4500",
+                            "created_time": "2026-08-19T12:00:00Z",
+                            "is_block_trade": true
                         }
                     ],
                     "cursor": "trades-cursor"
@@ -354,10 +357,10 @@ public sealed class MarketClientTests : IDisposable
         result.Items.Should().HaveCount(1);
         result.Items[0].TradeId.Should().Be("trade-001");
         result.Items[0].Ticker.Should().Be("MARKET-ABC");
-        result.Items[0].Side.Should().Be(OrderSide.Yes);
-        result.Items[0].YesPrice.Should().Be(55);
-        result.Items[0].NoPrice.Should().Be(45);
-        result.Items[0].Count.Should().Be(10);
+        result.Items[0].CountFp.Should().Be("10.00");
+        result.Items[0].YesPriceDollars.Should().Be("0.5500");
+        result.Items[0].NoPriceDollars.Should().Be("0.4500");
+        result.Items[0].IsBlockTrade.Should().BeTrue();
         result.Cursor.Should().Be("trades-cursor");
         result.HasMore.Should().BeTrue();
     }
@@ -368,7 +371,8 @@ public sealed class MarketClientTests : IDisposable
         // Arrange
         const string ticker = "MARKET-ABC";
         _server.Given(Request.Create()
-                .WithPath($"/trade-api/v2/markets/{ticker}/trades")
+                .WithPath("/trade-api/v2/markets/trades")
+                .WithParam("ticker", ticker)
                 .WithParam("cursor", "page-2")
                 .WithParam("limit", "25")
                 .UsingGet())
@@ -389,6 +393,47 @@ public sealed class MarketClientTests : IDisposable
         result.Should().NotBeNull();
         result.Items.Should().BeEmpty();
         result.HasMore.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetTradesAsync_WithCurrentQuery_AppliesBlockTradeFilter()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/markets/trades")
+                .WithParam("ticker", "MARKET-ABC")
+                .WithParam("is_block_trade", "false")
+                .WithParam("limit", "25")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{ "trades": [], "cursor": null }"""));
+
+        var result = await _client.GetTradesAsync(new MarketTradeQuery
+        {
+            Ticker = "MARKET-ABC",
+            IsBlockTrade = false,
+            Limit = 25
+        });
+
+        result.Trades.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetTradesAsync_WithCurrentQuery_AllowsAllMarkets()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/markets/trades")
+                .WithParam("is_block_trade", "true")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{ "trades": [], "cursor": null }"""));
+
+        var result = await _client.GetTradesAsync(new MarketTradeQuery { IsBlockTrade = true });
+
+        result.Trades.Should().BeEmpty();
     }
 
     [Fact]
@@ -443,5 +488,149 @@ public sealed class MarketClientTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         result.Ticker.Should().Be(ticker);
+    }
+
+    [Fact]
+    public async Task GetOrderBookAsync_CurrentFixedPointPayload_ReturnsLevels()
+    {
+        const string ticker = "MARKET-FP";
+        _server.Given(Request.Create()
+                .WithPath($"/trade-api/v2/markets/{ticker}/orderbook")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "orderbook_fp": {
+                        "yes_dollars": [["0.1500", "100.00"]],
+                        "no_dollars": [["0.8500", "25.50"]]
+                    }
+                }
+                """));
+
+        var result = await _client.GetOrderBookAsync(ticker);
+
+        result.Orderbook.Yes.Should().BeEmpty();
+        result.OrderbookFp.YesDollars.Should().ContainSingle();
+        result.OrderbookFp.YesDollars[0].Should().Equal("0.1500", "100.00");
+    }
+
+    [Fact]
+    public async Task GetMarketAsync_CurrentPayload_PreservesFixedPointAndPriceRanges()
+    {
+        const string ticker = "MARKET-CURRENT";
+        _server.Given(Request.Create()
+                .WithPath($"/trade-api/v2/markets/{ticker}")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "market": {
+                        "ticker": "MARKET-CURRENT",
+                        "event_ticker": "EVENT",
+                        "title": "Current contract",
+                        "status": "active",
+                        "yes_bid_dollars": "0.5600",
+                        "volume_fp": "10.00",
+                        "price_level_structure": "linear_cent",
+                        "price_ranges": [{ "start": "0.0000", "end": "1.0000", "step": "0.0100" }],
+                        "strike_type": "custom",
+                        "custom_strike": { "value": "10.5", "operator": "greater" },
+                        "exchange_index": 1
+                    }
+                }
+                """));
+
+        var result = await _client.GetMarketAsync(ticker);
+
+        result.YesBidDollars.Should().Be("0.5600");
+        result.VolumeFp.Should().Be("10.00");
+        result.PriceLevelStructure.Should().Be("linear_cent");
+        result.PriceRanges.Should().ContainSingle().Which.Step.Should().Be("0.0100");
+        result.StrikeType.Should().Be("custom");
+        result.CustomStrike!.Value.GetProperty("operator").GetString().Should().Be("greater");
+        result.ExchangeIndex.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetMarketCandlesticksAsync_UsesDocumentedRouteAndParsesResponse()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/series/SERIES/markets/MARKET/candlesticks")
+                .WithParam("start_ts", "1755600000")
+                .WithParam("end_ts", "1755603600")
+                .WithParam("period_interval", "60")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "ticker": "MARKET",
+                    "candlesticks": [{
+                        "end_period_ts": 1755603600,
+                        "yes_bid": { "open_dollars": null, "low_dollars": null, "high_dollars": null, "close_dollars": null },
+                        "yes_ask": { "open_dollars": "0.5200", "low_dollars": "0.5100", "high_dollars": "0.5300", "close_dollars": "0.5150" },
+                        "price": { "close_dollars": "0.5100" },
+                        "volume_fp": "10.00",
+                        "open_interest_fp": "20.00"
+                    }]
+                }
+                """));
+
+        var result = await _client.GetMarketCandlesticksAsync(
+            "SERIES",
+            "MARKET",
+            new MarketCandlesticksQuery
+            {
+                StartTimestamp = DateTimeOffset.FromUnixTimeSeconds(1755600000),
+                EndTimestamp = DateTimeOffset.FromUnixTimeSeconds(1755603600),
+                PeriodInterval = PeriodInterval.OneHour
+            });
+
+        result.Ticker.Should().Be("MARKET");
+        result.Candlesticks.Should().ContainSingle();
+        result.Candlesticks[0].YesBid.OpenDollars.Should().BeNull();
+        result.Candlesticks[0].VolumeFp.Should().Be("10.00");
+    }
+
+    [Fact]
+    public async Task GetOrderBooksAsync_ReturnsFixedPointBooks()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/markets/orderbooks")
+                .WithParam("depth", "5")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {"orderbooks":[{"ticker":"MARKET-A","orderbook_fp":{"yes_dollars":[["0.4500","10.00"]],"no_dollars":[["0.5500","12.50"]]}}]}
+                """));
+
+        var result = await _client.GetOrderBooksAsync(new MultipleOrderBooksQuery
+        {
+            Tickers = ["MARKET-A", "MARKET-B"],
+            Depth = 5
+        });
+
+        result.OrderBooks.Should().ContainSingle();
+        result.OrderBooks[0].Ticker.Should().Be("MARKET-A");
+        result.OrderBooks[0].OrderBookFp.YesDollars[0].Should().Equal("0.4500", "10.00");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(101)]
+    public async Task GetOrderBooksAsync_InvalidTickerCount_Throws(int count)
+    {
+        var query = new MultipleOrderBooksQuery
+        {
+            Tickers = Enumerable.Range(0, count).Select(i => $"M-{i}").ToArray()
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _client.GetOrderBooksAsync(query));
     }
 }

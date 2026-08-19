@@ -1,0 +1,124 @@
+name: Publish NuGet package
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: nuget-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify and publish
+    runs-on: ubuntu-latest
+    environment: nuget.org
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Validate release tag
+        id: version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
+            echo "Release tag must be a semantic version prefixed with v." >&2
+            exit 1
+          fi
+          echo "value=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Verify version and main ancestry
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          project_version=$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' KalshiSharp/KalshiSharp.csproj)
+          if [[ "$project_version" != "$RELEASE_VERSION" ]]; then
+            echo "Release version $RELEASE_VERSION does not match VersionPrefix $project_version." >&2
+            exit 1
+          fi
+          git fetch origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "The release tag must point to a commit on main." >&2
+            exit 1
+          fi
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: >-
+          dotnet build --no-restore --configuration Release
+          -p:Version=${{ steps.version.outputs.value }}
+          -p:ContinuousIntegrationBuild=true
+          -p:EnablePackageValidation=false
+
+      - name: Test with coverage gate
+        run: >-
+          dotnet test --no-build --configuration Release
+          -p:Version=${{ steps.version.outputs.value }}
+          -p:CollectCoverage=true
+          -p:CoverletOutput=../artifacts/test-results/
+          -p:CoverletOutputFormat=cobertura
+          -p:ExcludeByFile=**/obj/**
+          -p:Threshold=69
+          -p:ThresholdType=line
+          -p:ThresholdStat=total
+
+      - name: Audit vulnerable packages
+        run: dotnet list KalshiSharp.sln package --vulnerable --include-transitive
+
+      - name: Pack
+        run: >-
+          dotnet pack KalshiSharp/KalshiSharp.csproj
+          --no-build --configuration Release
+          --output artifacts/packages
+          -p:PackageVersion=${{ steps.version.outputs.value }}
+          -p:ContinuousIntegrationBuild=true
+          -p:PackageReleaseNotes=${{ github.event.release.html_url }}
+
+      - name: Smoke test package installation
+        shell: bash
+        run: |
+          dotnet new console --framework net8.0 --no-restore --output artifacts/package-smoke
+          dotnet add artifacts/package-smoke package KalshiSharp --version "${{ steps.version.outputs.value }}" --source "$GITHUB_WORKSPACE/artifacts/packages"
+          dotnet build artifacts/package-smoke --configuration Release --no-restore
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: KalshiSharp-${{ steps.version.outputs.value }}
+          path: artifacts/packages/*.*nupkg
+          if-no-files-found: error
+
+      - name: Authenticate to NuGet.org
+        id: nuget
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        with:
+          user: MattHurley
+
+      - name: Publish package
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push artifacts/packages/*.nupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json
+          dotnet nuget push artifacts/packages/*.snupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json

@@ -1,5 +1,7 @@
 name: CI
+
 on:
+  workflow_dispatch:
   pull_request:
     branches: 
       - main
@@ -9,23 +11,58 @@ on:
 
 jobs:
   build:
-    name: Build & Test
+    name: Build, Test & Pack
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
-          dotnet-version: '8.0.x'   # change if KalshiSharp targets a different version
+          dotnet-version: '8.0.x'
 
       - name: Restore
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build --no-restore --configuration Release -p:EnablePackageValidation=false
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release
+      - name: Test with coverage gate
+        run: >-
+          dotnet test --no-build --configuration Release
+          -p:CollectCoverage=true
+          -p:CoverletOutput=../artifacts/test-results/
+          -p:CoverletOutputFormat=cobertura
+          -p:ExcludeByFile=**/obj/**
+          -p:Threshold=69
+          -p:ThresholdType=line
+          -p:ThresholdStat=total
+
+      - name: Audit vulnerable packages
+        run: dotnet list KalshiSharp.sln package --vulnerable --include-transitive
+
+      - name: Pack
+        run: dotnet pack KalshiSharp/KalshiSharp.csproj --no-build --configuration Release --output artifacts/packages
+
+      - name: Smoke test package installation
+        shell: bash
+        run: |
+          package_version=$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' KalshiSharp/KalshiSharp.csproj)
+          dotnet new console --framework net8.0 --no-restore --output artifacts/package-smoke
+          dotnet add artifacts/package-smoke package KalshiSharp --version "$package_version" --source "$GITHUB_WORKSPACE/artifacts/packages"
+          dotnet build artifacts/package-smoke --configuration Release --no-restore
+
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verification
+          path: |
+            artifacts/test-results
+            artifacts/packages
+            artifacts/package-smoke/bin
+          if-no-files-found: warn
