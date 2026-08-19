@@ -537,6 +537,8 @@ public sealed class MarketClientTests : IDisposable
                         "volume_fp": "10.00",
                         "price_level_structure": "linear_cent",
                         "price_ranges": [{ "start": "0.0000", "end": "1.0000", "step": "0.0100" }],
+                        "strike_type": "custom",
+                        "custom_strike": { "value": "10.5", "operator": "greater" },
                         "exchange_index": 1
                     }
                 }
@@ -548,6 +550,8 @@ public sealed class MarketClientTests : IDisposable
         result.VolumeFp.Should().Be("10.00");
         result.PriceLevelStructure.Should().Be("linear_cent");
         result.PriceRanges.Should().ContainSingle().Which.Step.Should().Be("0.0100");
+        result.StrikeType.Should().Be("custom");
+        result.CustomStrike!.Value.GetProperty("operator").GetString().Should().Be("greater");
         result.ExchangeIndex.Should().Be(1);
     }
 
@@ -591,5 +595,42 @@ public sealed class MarketClientTests : IDisposable
         result.Candlesticks.Should().ContainSingle();
         result.Candlesticks[0].YesBid.OpenDollars.Should().BeNull();
         result.Candlesticks[0].VolumeFp.Should().Be("10.00");
+    }
+
+    [Fact]
+    public async Task GetOrderBooksAsync_ReturnsFixedPointBooks()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/markets/orderbooks")
+                .WithParam("depth", "5")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {"orderbooks":[{"ticker":"MARKET-A","orderbook_fp":{"yes_dollars":[["0.4500","10.00"]],"no_dollars":[["0.5500","12.50"]]}}]}
+                """));
+
+        var result = await _client.GetOrderBooksAsync(new MultipleOrderBooksQuery
+        {
+            Tickers = ["MARKET-A", "MARKET-B"],
+            Depth = 5
+        });
+
+        result.OrderBooks.Should().ContainSingle();
+        result.OrderBooks[0].Ticker.Should().Be("MARKET-A");
+        result.OrderBooks[0].OrderBookFp.YesDollars[0].Should().Equal("0.4500", "10.00");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(101)]
+    public async Task GetOrderBooksAsync_InvalidTickerCount_Throws(int count)
+    {
+        var query = new MultipleOrderBooksQuery
+        {
+            Tickers = Enumerable.Range(0, count).Select(i => $"M-{i}").ToArray()
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _client.GetOrderBooksAsync(query));
     }
 }

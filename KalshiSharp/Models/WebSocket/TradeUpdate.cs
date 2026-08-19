@@ -11,6 +11,44 @@ public sealed record TradeUpdate : WebSocketMessage<TradeUpdate.MessageBody>
     /// <inheritdoc/>
     public override string Type => "trade";
 
+    /// <summary>Legacy flat trade identifier.</summary>
+    [JsonPropertyName("trade_id")]
+    public string TradeId { get; init; } = string.Empty;
+
+    /// <summary>Legacy flat market ticker.</summary>
+    [JsonPropertyName("market_ticker")]
+    public string MarketTicker { get; init; } = string.Empty;
+
+    /// <summary>Legacy flat outcome side.</summary>
+    [JsonPropertyName("side")]
+    public OrderSide Side { get; init; }
+
+    /// <summary>Legacy flat YES price in cents.</summary>
+    [JsonPropertyName("yes_price")]
+    public int YesPrice { get; init; }
+
+    /// <summary>Legacy flat NO price in cents.</summary>
+    [JsonPropertyName("no_price")]
+    public int NoPrice { get; init; }
+
+    /// <summary>Legacy flat integer contract count.</summary>
+    [JsonPropertyName("count")]
+    public int Count { get; init; }
+
+    /// <summary>Legacy flat taker side.</summary>
+    [JsonPropertyName("taker_side")]
+    public string? TakerSide { get; init; }
+
+    /// <summary>Legacy flat creation timestamp in Unix milliseconds.</summary>
+    [JsonPropertyName("created_time")]
+    public long? CreatedTimeMs { get; init; }
+
+    /// <summary>Gets the legacy creation time as UTC.</summary>
+    [JsonIgnore]
+    public DateTimeOffset? CreatedTime => CreatedTimeMs.HasValue
+        ? DateTimeOffset.FromUnixTimeMilliseconds(CreatedTimeMs.Value)
+        : null;
+
     public sealed record MessageBody
     {
         /// <summary>

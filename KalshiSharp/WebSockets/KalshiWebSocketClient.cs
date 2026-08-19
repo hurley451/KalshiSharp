@@ -246,6 +246,41 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
     }
 
     /// <inheritdoc />
+    public async Task UnsubscribeAsync(int subscriptionId, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(subscriptionId);
+        EnsureAuthenticated();
+
+        var command = WebSocketSubscription.ToUnsubscribeCommand(subscriptionId);
+        var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(command, KalshiJsonOptions.Default));
+        await SendAsync(bytes, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateSubscriptionAsync(
+        int subscriptionId,
+        SubscriptionUpdateAction action,
+        IReadOnlyList<string>? marketTickers = null,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(subscriptionId);
+        EnsureAuthenticated();
+
+        var tickers = marketTickers ?? [];
+        if ((action is SubscriptionUpdateAction.AddMarkets or SubscriptionUpdateAction.DeleteMarkets) &&
+            (tickers.Count == 0 || tickers.Any(string.IsNullOrWhiteSpace)))
+        {
+            throw new ArgumentException("Market tickers are required for add and delete actions.", nameof(marketTickers));
+        }
+
+        var command = WebSocketSubscription.ToUpdateCommand(subscriptionId, action, tickers);
+        var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(command, KalshiJsonOptions.Default));
+        await SendAsync(bytes, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
         if (_disposed)

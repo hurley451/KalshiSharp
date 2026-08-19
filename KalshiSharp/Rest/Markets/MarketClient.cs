@@ -75,6 +75,18 @@ internal sealed class MarketClient : IMarketClient
     }
 
     /// <inheritdoc />
+    public Task<MultipleOrderBooksResponse> GetOrderBooksAsync(MultipleOrderBooksQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/orderbooks{query.ToQueryString()}"
+        };
+        return _httpClient.SendAsync<MultipleOrderBooksResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<TradesResponse> GetTradesAsync(string ticker, string? cursor = null, int? limit = null, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ticker);

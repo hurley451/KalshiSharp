@@ -21,6 +21,9 @@ public sealed record FillQuery : PaginationParameters
     /// <summary>Filter by subaccount, including zero for the primary account.</summary>
     public int? Subaccount { get; init; }
 
+    /// <summary>Filter by exchange index when shard-aware reads are active.</summary>
+    public int? ExchangeIndex { get; init; }
+
     /// <summary>Builds the query string.</summary>
     public string ToQueryString()
     {
@@ -31,6 +34,10 @@ public sealed record FillQuery : PaginationParameters
         if (Subaccount.HasValue)
         {
             builder.Append("subaccount", Subaccount.Value.ToString(CultureInfo.InvariantCulture));
+        }
+        if (ExchangeIndex.HasValue)
+        {
+            builder.Append("exchange_index", ExchangeIndex.Value.ToString(CultureInfo.InvariantCulture));
         }
 
         if (MinTime.HasValue)

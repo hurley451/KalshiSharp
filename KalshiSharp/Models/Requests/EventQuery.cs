@@ -15,7 +15,12 @@ public sealed record EventQuery : PaginationParameters
     /// <summary>
     /// Filter by event status.
     /// </summary>
-    public EventStatus? Status { get; init; }
+    public MarketStatus? Status { get; init; }
+
+    /// <summary>
+    /// Filter by the current event status values.
+    /// </summary>
+    public EventStatus? EventStatus { get; init; }
 
     /// <summary>
     /// Filter by series ticker.
@@ -26,7 +31,12 @@ public sealed record EventQuery : PaginationParameters
     /// Parameter to specify if nested markets should be included in the response. 
     /// When true, each event will include a 'markets' field containing a list of Market objects associated with that event.
     /// </summary>
-    public bool? WithNestedMarkets { get; init; }
+    public string? WithNestedMarkets { get; init; }
+
+    /// <summary>
+    /// Specifies whether nested markets should be included in the response.
+    /// </summary>
+    public bool? IncludeNestedMarkets { get; init; }
 
     /// <summary>Filter by specific event tickers.</summary>
     public IReadOnlyList<string>? Tickers { get; init; }
@@ -46,13 +56,19 @@ public sealed record EventQuery : PaginationParameters
 
         AppendPaginationParameters(builder);
 
-        if (Status.HasValue)
+        if (EventStatus.HasValue)
+        {
+            builder.Append("status", EventStatus.Value.ToString().ToLowerInvariant());
+        }
+        else if (Status.HasValue)
         {
             builder.Append("status", Status.Value.ToString().ToLowerInvariant());
         }
 
         builder.AppendIfNotEmpty("series_ticker", SeriesTicker);
-        builder.AppendIfNotEmpty("with_nested_markets", WithNestedMarkets?.ToString()?.ToLowerInvariant());
+        builder.AppendIfNotEmpty(
+            "with_nested_markets",
+            IncludeNestedMarkets?.ToString().ToLowerInvariant() ?? WithNestedMarkets);
 
         if (Tickers is { Count: > 0 })
         {

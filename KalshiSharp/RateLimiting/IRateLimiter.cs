@@ -12,6 +12,10 @@ public interface IRateLimiter : IAsyncDisposable, IDisposable
     /// <returns>A task that completes when permission is granted.</returns>
     ValueTask WaitAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Waits for the token budget required by a classified request.</summary>
+    ValueTask WaitAsync(RateLimitRequest request, CancellationToken cancellationToken = default) =>
+        WaitAsync(cancellationToken);
+
     /// <summary>
     /// Gets whether rate limiting is currently active (tokens below threshold).
     /// </summary>

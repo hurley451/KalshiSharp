@@ -270,6 +270,7 @@ catch (KalshiException ex)
 | `Timeout` | 30s | HTTP request timeout |
 | `ClockSkewTolerance` | 30s | Tolerance for timestamp validation |
 | `EnableRateLimiting` | true | Enable client-side rate limiting |
+| `RateLimits` | Basic tier: read burst 200, write burst 100 | Separate read, unscoped-write, and shard-write token budgets; override after checking account limits |
 
 ## Project Structure
 
@@ -332,6 +333,12 @@ dotnet run --project KalshiSharp.Examples -- all
 
 - .NET 8.0 or later
 - Valid Kalshi API credentials (obtain from [Kalshi API Settings](https://kalshi.com/account/api))
+
+## Publishing
+
+NuGet publishing uses GitHub Actions trusted publishing. Publishing a GitHub Release with a semantic-version tag such as `v1.1.0` builds, tests, validates the package against `1.0.1`, creates package artifacts, obtains a short-lived NuGet.org credential through OpenID Connect, and publishes the package and symbols. No long-lived NuGet API key is stored in GitHub.
+
+The NuGet.org trusted publishing policy must target GitHub repository `Hurley451/KalshiSharp`, workflow `release.yml`, and environment `nuget.org` under the `MattHurley` NuGet.org account.
 
 ## License
 

@@ -169,6 +169,20 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task UnsubscribeAsync_BySubscriptionId_SendsServerAssignedId()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        await _client.UnsubscribeAsync(42);
+
+        var lastMessage = _mockConnection.SentMessages[^1];
+        lastMessage.Should().Contain("\"cmd\":\"unsubscribe\"");
+        lastMessage.Should().Contain("\"sids\":[42]");
+        lastMessage.Should().NotContain("\"channels\"");
+    }
+
+    [Fact]
     public async Task SubscribeAsync_TickerCanSkipInitialAcknowledgement()
     {
         _mockConnection.SetupConnect();
@@ -181,6 +195,82 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         });
 
         _mockConnection.SentMessages[^1].Should().Contain("\"skip_ticker_ack\":true");
+    }
+
+    [Fact]
+    public async Task UpdateSubscriptionAsync_SendsSnapshotRefreshCommand()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        await _client.UpdateSubscriptionAsync(17, SubscriptionUpdateAction.GetSnapshot, ["MARKET-1"]);
+
+        var command = _mockConnection.SentMessages[^1];
+        command.Should().Contain("\"cmd\":\"update_subscription\"");
+        command.Should().Contain("\"sids\":[17]");
+        command.Should().Contain("\"action\":\"get_snapshot\"");
+        command.Should().Contain("\"market_tickers\":[\"MARKET-1\"]");
+    }
+
+    [Fact]
+    public async Task SubscribeAsync_LifecycleChannel_DoesNotAddMarketFilter()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        await _client.SubscribeAsync(new MarketLifecycleSubscription());
+
+        var command = _mockConnection.SentMessages[^1];
+        command.Should().Contain("\"channels\":[\"market_lifecycle_v2\"]");
+        command.Should().NotContain("market_tickers");
+    }
+
+    [Theory]
+    [InlineData("market_lifecycle_v2", typeof(MarketLifecycleUpdate))]
+    [InlineData("multivariate_market_lifecycle", typeof(MultivariateMarketLifecycleUpdate))]
+    public void LifecycleMarketMessages_DeserializeCurrentSchema(string type, Type expectedType)
+    {
+        var json = """
+        {
+          "type":"MESSAGE_TYPE",
+          "sid":3,
+          "msg":{
+            "market_ticker":"MARKET-1",
+            "event_type":"price_level_structure_updated",
+            "exchange_index":1,
+            "settlement_value":"1.0000",
+            "price_level_structure":"custom",
+            "price_ranges":[{"start":"0.0000","end":"1.0000","step":"0.0010"}],
+            "additional_metadata":{"event_ticker":"EVENT-1","strike_type":"greater","custom_strike":{"value":"10.5"}}
+          }
+        }
+        """.Replace("MESSAGE_TYPE", type, StringComparison.Ordinal);
+
+        var result = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default);
+
+        result.Should().BeOfType(expectedType);
+        var body = result switch
+        {
+            MarketLifecycleUpdate standard => standard.Message,
+            MultivariateMarketLifecycleUpdate multivariate => multivariate.Message,
+            _ => throw new InvalidOperationException()
+        };
+        body.ExchangeIndex.Should().Be(1);
+        body.PriceRanges.Should().ContainSingle();
+        body.AdditionalMetadata!.CustomStrike.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void EventLifecycleAndFeeMessages_Deserialize()
+    {
+        const string eventJson = """{"type":"event_lifecycle","msg":{"event_ticker":"EVENT-1","exchange_index":2,"title":"Event","series_ticker":"SERIES"}}""";
+        const string feeJson = """{"type":"event_fee_update","msg":{"event_ticker":"EVENT-1","fee_type_override":"quadratic","fee_multiplier_override":1.25}}""";
+
+        var lifecycle = JsonSerializer.Deserialize<WebSocketMessage>(eventJson, KalshiJsonOptions.Default);
+        var fee = JsonSerializer.Deserialize<WebSocketMessage>(feeJson, KalshiJsonOptions.Default);
+
+        lifecycle.Should().BeOfType<EventLifecycleUpdate>().Which.Message.ExchangeIndex.Should().Be(2);
+        fee.Should().BeOfType<EventFeeUpdate>().Which.Message.FeeMultiplierOverride.Should().Be(1.25m);
     }
 
     [Fact]
@@ -481,7 +571,8 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
                 "type": "subscribed",
                 "msg": {
-                  "channel": "orderbook_delta"
+                  "channel": "orderbook_delta",
+                  "sid": 42
                 }
             }
             """;
@@ -511,6 +602,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         // Assert
         var confirm = messages[0].Should().BeOfType<SubscriptionConfirmation>().Subject;
         confirm.Message.Channel!.Should().Be("orderbook_delta");
+        confirm.Message.Sid.Should().Be(42);
     }
 
     [Fact]
@@ -553,9 +645,27 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         }
 
         // Assert
-        var error = messages[0].Should().BeOfType<ErrorMessage>().Subject;
+        var error = messages[0].Should().BeOfType<ErrorMessageV2>().Subject;
         error.Message.Code.Should().Be(100);
         error.Message.ErrorMessage.Should().Be("Market not found");
+    }
+
+    [Fact]
+    public void DeserializeError_SupportsPublishedFlatEnvelope()
+    {
+        const string json = """
+            {
+              "type": "error",
+              "code": "invalid_request",
+              "msg": "Ticker is required"
+            }
+            """;
+
+        var error = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default)
+            .Should().BeOfType<ErrorMessage>().Subject;
+
+        error.Code.Should().Be("invalid_request");
+        error.Message.Should().Be("Ticker is required");
     }
 
     [Fact]

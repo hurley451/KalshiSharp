@@ -34,4 +34,24 @@ public interface IOrderClientV2
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The amendment details.</returns>
         Task<AmendOrderResponseV2> AmendOrderAsync(string orderId, AmendOrderRequestV2 request, int? subaccount = null, CancellationToken cancellationToken = default);
+
+        /// <summary>Decreases an existing order by or to a fixed-point quantity.</summary>
+        Task<DecreaseOrderResponseV2> DecreaseOrderAsync(
+            string orderId,
+            DecreaseOrderRequestV2 request,
+            int? subaccount = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("This V2 order client does not support decreasing orders.");
+
+        /// <summary>Creates multiple V2 event orders in one request.</summary>
+        Task<BatchCreateOrdersResponseV2> BatchCreateOrdersAsync(
+            BatchCreateOrdersRequestV2 request,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("This V2 order client does not support batch order creation.");
+
+        /// <summary>Cancels multiple V2 event orders in one request.</summary>
+        Task<BatchCancelOrdersResponseV2> BatchCancelOrdersAsync(
+            BatchCancelOrdersRequestV2 request,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("This V2 order client does not support batch order cancellation.");
 }

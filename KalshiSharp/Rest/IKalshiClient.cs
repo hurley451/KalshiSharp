@@ -5,6 +5,7 @@ using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
 using KalshiSharp.Rest.Users;
+using KalshiSharp.Rest.Account;
 
 namespace KalshiSharp.Rest;
 
@@ -13,6 +14,8 @@ namespace KalshiSharp.Rest;
 /// </summary>
 public interface IKalshiClient : IDisposable
 {
+    /// <summary>Gets account usage and rate-limit discovery when supported.</summary>
+    IAccountClient? Account => null;
     /// <summary>
     /// Gets the exchange client for status and schedule endpoints.
     /// </summary>

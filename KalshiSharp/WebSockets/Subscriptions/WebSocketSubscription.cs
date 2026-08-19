@@ -51,6 +51,33 @@ public abstract record WebSocketSubscription
             MarketTickers = Markets
         }
     };
+
+    /// <summary>Creates an unsubscription command for a server-assigned subscription.</summary>
+    internal static SubscriptionCommand ToUnsubscribeCommand(int subscriptionId) => new()
+    {
+        Id = 2,
+        Command = "unsubscribe",
+        Params = new SubscriptionParams
+        {
+            SubscriptionIds = [subscriptionId]
+        }
+    };
+
+    /// <summary>Creates an update command for an existing subscription.</summary>
+    internal static SubscriptionCommand ToUpdateCommand(
+        int subscriptionId,
+        SubscriptionUpdateAction action,
+        IReadOnlyList<string> marketTickers) => new()
+        {
+            Id = 3,
+            Command = "update_subscription",
+            Params = new SubscriptionParams
+            {
+                SubscriptionIds = [subscriptionId],
+                Action = action,
+                MarketTickers = marketTickers
+            }
+        };
 }
 
 /// <summary>
@@ -86,17 +113,29 @@ internal sealed record SubscriptionParams
     /// The channels to subscribe to (e.g., "orderbook_delta", "ticker", "trade").
     /// </summary>
     [JsonPropertyName("channels")]
-    public required IReadOnlyList<string> Channels { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? Channels { get; init; }
 
     /// <summary>
     /// The market tickers to subscribe to.
     /// </summary>
     [JsonPropertyName("market_tickers")]
-    public IReadOnlyList<string> MarketTickers { get; init; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? MarketTickers { get; init; }
 
     /// <summary>
     /// Skips the initial ticker acknowledgement when requested by a ticker subscription.
     /// </summary>
     [JsonPropertyName("skip_ticker_ack")]
     public bool? SkipTickerAck { get; init; }
+
+    /// <summary>Existing subscription identifiers to update.</summary>
+    [JsonPropertyName("sids")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<int>? SubscriptionIds { get; init; }
+
+    /// <summary>Update action.</summary>
+    [JsonPropertyName("action")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SubscriptionUpdateAction? Action { get; init; }
 }

@@ -526,4 +526,38 @@ public sealed class PortfolioClientTests : IDisposable
         result.Items[0].YesPriceDollars.Should().Be("0.5600");
         result.Items[0].FeeCost.Should().Be("0.0200");
     }
+
+    [Fact]
+    public async Task GetSubaccountBalancesAsync_ParsesShardEntries()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/subaccounts/balances")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"subaccount_balances":[{"subaccount_number":2,"exchange_index":1,"balance":"125.5000","updated_ts":1755600000}]}"""));
+
+        var result = await _portfolioClient.GetSubaccountBalancesAsync();
+
+        result.SubaccountBalances.Should().ContainSingle();
+        result.SubaccountBalances[0].SubaccountNumber.Should().Be(2);
+        result.SubaccountBalances[0].ExchangeIndex.Should().Be(1);
+        result.SubaccountBalances[0].Balance.Should().Be("125.5000");
+    }
+
+    [Fact]
+    public async Task PositionAndFillQueries_PreserveZeroExchangeIndex()
+    {
+        _server.Given(Request.Create().WithPath("/trade-api/v2/portfolio/positions")
+                .WithParam("exchange_index", "0").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithHeader("Content-Type", "application/json")
+                .WithBody("""{"market_positions":[],"event_positions":[],"cursor":null}"""));
+        _server.Given(Request.Create().WithPath("/trade-api/v2/portfolio/fills")
+                .WithParam("exchange_index", "0").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithHeader("Content-Type", "application/json")
+                .WithBody("""{"fills":[],"cursor":null}"""));
+
+        await _portfolioClient.ListPositionsAsync(new PositionQuery { ExchangeIndex = 0 });
+        await _portfolioClient.ListFillsAsync(new FillQuery { ExchangeIndex = 0 });
+    }
 }

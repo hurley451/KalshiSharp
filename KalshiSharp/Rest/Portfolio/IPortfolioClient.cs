@@ -19,6 +19,10 @@ public interface IPortfolioClient
     Task<BalanceResponse> GetBalanceAsync(BalanceQuery query, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support scoped balances.");
 
+    /// <summary>Gets balances for all accessible subaccounts.</summary>
+    Task<SubaccountBalancesResponse> GetSubaccountBalancesAsync(CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support all-subaccount balances.");
+
     /// <summary>
     /// Lists positions with optional filtering and pagination.
     /// </summary>

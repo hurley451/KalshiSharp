@@ -48,4 +48,12 @@ public interface IOrderClient
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A paged list of orders.</returns>
     Task<OrdersResponse> ListOrdersAsync(OrderQuery? query = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Lists queue positions for resting orders.</summary>
+    Task<QueuePositionsResponse> ListQueuePositionsAsync(QueuePositionsQuery? query = null, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This order client does not support queue positions.");
+
+    /// <summary>Gets the queue position for one order.</summary>
+    Task<QueuePositionResponse> GetQueuePositionAsync(string orderId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This order client does not support queue positions.");
 }

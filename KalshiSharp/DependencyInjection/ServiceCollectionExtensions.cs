@@ -40,7 +40,8 @@ public static class ServiceCollectionExtensions
         // Register core services
         services.AddSingleton<ISystemClock, SystemClock>();
         services.AddSingleton<IKalshiRequestSigner, RsaPssRequestSigner>();
-        services.AddSingleton<IRateLimiter, TokenBucketRateLimiter>();
+        services.AddSingleton<IRateLimiter>(sp =>
+            new KalshiTokenRateLimiter(sp.GetRequiredService<IOptions<KalshiClientOptions>>().Value.RateLimits));
         services.AddSingleton<KalshiClientMetrics>();
 
         // Register delegating handlers
@@ -50,13 +51,17 @@ public static class ServiceCollectionExtensions
             var rateLimiter = sp.GetRequiredService<IRateLimiter>();
             var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RateLimitingDelegatingHandler>>();
             var options = sp.GetRequiredService<IOptions<KalshiClientOptions>>();
-            return new RateLimitingDelegatingHandler(rateLimiter, logger, options.Value.EnableRateLimiting);
+            return new RateLimitingDelegatingHandler(
+                rateLimiter,
+                logger,
+                options.Value.EnableRateLimiting,
+                options.Value.RateLimits.DefaultTokenCost);
         });
 
         // Configure HttpClient with resilience pipeline
         services.AddHttpClient<IKalshiHttpClient, KalshiHttpClient>(HttpClientName)
-            .AddHttpMessageHandler<SigningDelegatingHandler>()
             .AddHttpMessageHandler<RateLimitingDelegatingHandler>()
+            .AddHttpMessageHandler<SigningDelegatingHandler>()
             .AddStandardResilienceHandler(options =>
             {
                 // Retry policy: max 3 retries with exponential backoff and jitter

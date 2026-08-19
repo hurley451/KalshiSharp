@@ -47,6 +47,17 @@ internal sealed class PortfolioClient : IPortfolioClient
     }
 
     /// <inheritdoc />
+    public Task<SubaccountBalancesResponse> GetSubaccountBalancesAsync(CancellationToken cancellationToken = default)
+    {
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/subaccounts/balances"
+        };
+        return _httpClient.SendAsync<SubaccountBalancesResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<PositionsResponse> ListPositionsAsync(
         string? cursor = null,
         int? limit = null,

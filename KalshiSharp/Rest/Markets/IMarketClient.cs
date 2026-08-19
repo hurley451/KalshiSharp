@@ -33,6 +33,10 @@ public interface IMarketClient
     /// <returns>The order book for the market.</returns>
     Task<OrderBookResponse> GetOrderBookAsync(string ticker, int? depth = null, CancellationToken cancellationToken = default);
 
+    /// <summary>Gets order books for up to 100 markets.</summary>
+    Task<MultipleOrderBooksResponse> GetOrderBooksAsync(MultipleOrderBooksQuery query, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This market client does not support multiple order books.");
+
     /// <summary>
     /// Gets trades for a market.
     /// </summary>

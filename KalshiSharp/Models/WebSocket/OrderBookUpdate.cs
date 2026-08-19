@@ -10,12 +10,33 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
     /// <inheritdoc/>
     public override string Type => "orderbook_delta";    
 
+    /// <summary>Legacy flat market ticker.</summary>
+    [JsonPropertyName("market_ticker")]
+    public string MarketTicker { get; init; } = string.Empty;
+
+    /// <summary>Legacy flat integer price.</summary>
+    [JsonPropertyName("price")]
+    public int Price { get; init; }
+
+    /// <summary>Legacy flat integer quantity delta.</summary>
+    [JsonPropertyName("delta")]
+    public int Delta { get; init; }
+
+    /// <summary>Legacy flat outcome side.</summary>
+    [JsonPropertyName("side")]
+    public string Side { get; init; } = string.Empty;
+
+    /// <summary>Whether the legacy flat update is for YES.</summary>
+    [JsonIgnore]
+    public bool IsYesSide => string.Equals(Side, "yes", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether the legacy flat update is for NO.</summary>
+    [JsonIgnore]
+    public bool IsNoSide => string.Equals(Side, "no", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>
     /// Sequential number that should be checked if you want to guarantee you received all the messages. Used for snapshot/delta consistency
     /// </summary>
-    [JsonPropertyName("seq")]
-    public int Sequence { get; init; }
-
     public sealed record MessageBody
     {
         /// <summary>
@@ -114,7 +135,12 @@ public sealed record OrderBookSnapshot : WebSocketMessage<OrderBookSnapshot.Mess
     /// <summary>
     /// Sequential number that should be checked if you want to guarantee you received all the messages. Used for snapshot/delta consistency
     /// </summary>
-    public int Seq { get; init; }
+    [JsonIgnore]
+    public int Seq
+    {
+        get => checked((int)(Sequence ?? 0));
+        init => Sequence = value;
+    }
 
     public sealed record MessageBody
     {
@@ -170,4 +196,26 @@ public sealed record OrderBookSnapshot : WebSocketMessage<OrderBookSnapshot.Mess
         [JsonPropertyName("no_dollars_fp")]
         public IReadOnlyList<decimal[]>? NoDollarsFp { get; init; }
     }
+}
+
+/// <summary>
+/// Legacy flat order-book snapshot retained for KalshiSharp 1.0.1 compatibility.
+/// </summary>
+[Obsolete("Use OrderBookSnapshot for current nested WebSocket payloads.")]
+public sealed record OrderBookSnapshotMessage : WebSocketMessage
+{
+    /// <inheritdoc/>
+    public override string Type => "orderbook_snapshot";
+
+    /// <summary>Market ticker this snapshot is for.</summary>
+    [JsonPropertyName("market_ticker")]
+    public required string MarketTicker { get; init; }
+
+    /// <summary>Legacy YES price levels.</summary>
+    [JsonPropertyName("yes")]
+    public required IReadOnlyList<int[]> Yes { get; init; }
+
+    /// <summary>Legacy NO price levels.</summary>
+    [JsonPropertyName("no")]
+    public required IReadOnlyList<int[]> No { get; init; }
 }

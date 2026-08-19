@@ -1,6 +1,9 @@
-using System.Text.Json.Nodes;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace KalshiSharp.Models.Responses;
+
+#pragma warning disable CA1708 // Preserve the published Subtitle member and current SubTitle alias.
 
 /// <summary>
 /// Represents an event containing one or more markets.
@@ -18,9 +21,18 @@ public sealed record EventResponse
     public required string Title { get; init; }
 
     /// <summary>
-    /// SubTitle providing additional context.
+    /// Subtitle providing additional context.
     /// </summary>
-    public string? SubTitle { get; init; }
+    [JsonPropertyName("sub_title")]
+    public string? Subtitle { get; init; }
+
+    /// <summary>Current spelling of <see cref="Subtitle"/>.</summary>
+    [JsonIgnore]
+    public string? SubTitle
+    {
+        get => Subtitle;
+        init => Subtitle = value;
+    }
 
     /// <summary>
     /// Category this event belongs to.
@@ -28,14 +40,34 @@ public sealed record EventResponse
     public required string Category { get; init; }
 
     /// <summary>
-    /// Mutually exclusive status ('true' for mutually exclusive).
+    /// Mutually exclusive status ("true" for mutually exclusive).
     /// </summary>
-    public bool? MutuallyExclusive { get; init; }   
+    [JsonConverter(typeof(BooleanStringJsonConverter))]
+    public string? MutuallyExclusive { get; init; }
+
+    /// <summary>Strongly typed mutually exclusive status.</summary>
+    [JsonIgnore]
+    public bool? IsMutuallyExclusive
+    {
+        get => bool.TryParse(MutuallyExclusive, out var value) ? value : null;
+        init => MutuallyExclusive = value?.ToString().ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Number of markets in this event when supplied by the API.
+    /// </summary>
+    public int MarketCount { get; init; }
 
     /// <summary>
     /// Markets belonging to this event.
     /// </summary>
     public IReadOnlyList<MarketResponse>? Markets { get; init; }
+
+    /// <summary>When this event was created, when supplied by the API.</summary>
+    public DateTimeOffset? CreatedTime { get; init; }
+
+    /// <summary>When this event closes, when supplied by the API.</summary>
+    public DateTimeOffset? CloseTime { get; init; }
 
     /// <summary>
     /// Series ticker if this event is part of a series.
@@ -99,3 +131,35 @@ public sealed record EventResponse
         public string? Cadence { get; init; }
     }
 }
+
+internal sealed class BooleanStringJsonConverter : JsonConverter<string?>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        reader.TokenType switch
+        {
+            JsonTokenType.True => bool.TrueString.ToLowerInvariant(),
+            JsonTokenType.False => bool.FalseString.ToLowerInvariant(),
+            JsonTokenType.String => reader.GetString(),
+            JsonTokenType.Null => null,
+            _ => throw new JsonException("Expected a Boolean, string, or null value.")
+        };
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+    {
+        if (value is null)
+        {
+            writer.WriteNullValue();
+            return;
+        }
+
+        if (bool.TryParse(value, out var booleanValue))
+        {
+            writer.WriteBooleanValue(booleanValue);
+            return;
+        }
+
+        writer.WriteStringValue(value);
+    }
+}
+
+#pragma warning restore CA1708

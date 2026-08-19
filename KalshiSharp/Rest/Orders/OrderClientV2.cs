@@ -77,4 +77,90 @@ internal sealed class OrderClientV2 : IOrderClientV2
 
         return _httpClient.SendAsync<AmendOrderResponseV2>(httpRequest, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public Task<DecreaseOrderResponseV2> DecreaseOrderAsync(
+        string orderId,
+        DecreaseOrderRequestV2 request,
+        int? subaccount = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var hasReduceBy = !string.IsNullOrWhiteSpace(request.ReduceBy);
+        var hasReduceTo = !string.IsNullOrWhiteSpace(request.ReduceTo);
+        if (hasReduceBy == hasReduceTo)
+        {
+            throw new ArgumentException("Exactly one of ReduceBy or ReduceTo must be provided.", nameof(request));
+        }
+
+        if (request.ExchangeIndex == -1 && string.IsNullOrWhiteSpace(request.MarketTicker))
+        {
+            throw new ArgumentException("MarketTicker is required when ExchangeIndex is -1.", nameof(request));
+        }
+
+        var queryString = string.Empty;
+        if (subaccount.HasValue)
+        {
+            var builder = new QueryStringBuilder();
+            builder.AppendIfNotNull("subaccount", subaccount);
+            queryString = builder.Build();
+        }
+
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Post,
+            Path = $"{BasePath}/{Uri.EscapeDataString(orderId)}/decrease{queryString}",
+            Content = request
+        };
+
+        return _httpClient.SendAsync<DecreaseOrderResponseV2>(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<BatchCreateOrdersResponseV2> BatchCreateOrdersAsync(
+        BatchCreateOrdersRequestV2 request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Orders);
+
+        if (request.Orders.Count == 0)
+        {
+            throw new ArgumentException("At least one order is required.", nameof(request));
+        }
+
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Post,
+            Path = $"{BasePath}/batched",
+            Content = request
+        };
+
+        return _httpClient.SendAsync<BatchCreateOrdersResponseV2>(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<BatchCancelOrdersResponseV2> BatchCancelOrdersAsync(
+        BatchCancelOrdersRequestV2 request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Orders);
+
+        if (request.Orders.Count == 0)
+        {
+            throw new ArgumentException("At least one order is required.", nameof(request));
+        }
+
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Delete,
+            Path = $"{BasePath}/batched",
+            Content = request
+        };
+
+        return _httpClient.SendAsync<BatchCancelOrdersResponseV2>(httpRequest, cancellationToken);
+    }
 }

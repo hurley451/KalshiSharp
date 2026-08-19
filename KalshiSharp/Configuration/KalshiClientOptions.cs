@@ -43,6 +43,9 @@ public sealed class KalshiClientOptions
     /// </summary>
     public bool EnableRateLimiting { get; set; } = true;
 
+    /// <summary>Token-budget configuration for read, write, and shard-specific write buckets.</summary>
+    public KalshiRateLimitOptions RateLimits { get; } = new();
+
     /// <summary>
     /// Gets the effective base URI, using <see cref="BaseUri"/> if specified,
     /// otherwise deriving from <see cref="Environment"/>.

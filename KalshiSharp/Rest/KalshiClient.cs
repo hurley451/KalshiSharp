@@ -9,6 +9,8 @@ using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
 using KalshiSharp.Rest.Users;
+using KalshiSharp.Rest.Account;
+using KalshiSharp.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -28,10 +30,12 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IHistoricalClient? _historical;
     private readonly IPortfolioClient _portfolio;
     private readonly IUserClient _users;
+    private readonly IAccountClient? _account;
 
     // Resources we own and must dispose (only set when using direct instantiation)
     private readonly HttpClient? _ownedHttpClient;
     private readonly RsaPssRequestSigner? _ownedSigner;
+    private readonly KalshiTokenRateLimiter? _ownedRateLimiter;
     private bool _disposed;
 
     /// <summary>
@@ -65,7 +69,17 @@ public sealed class KalshiClient : IKalshiClient
             InnerHandler = new HttpClientHandler()
         };
 
-        _ownedHttpClient = new HttpClient(signingHandler)
+        _ownedRateLimiter = new KalshiTokenRateLimiter(options.RateLimits);
+        var rateLimitHandler = new RateLimitingDelegatingHandler(
+            _ownedRateLimiter,
+            NullLogger<RateLimitingDelegatingHandler>.Instance,
+            options.EnableRateLimiting,
+            options.RateLimits.DefaultTokenCost)
+        {
+            InnerHandler = signingHandler
+        };
+
+        _ownedHttpClient = new HttpClient(rateLimitHandler)
         {
             BaseAddress = options.GetEffectiveBaseUri(),
             Timeout = options.Timeout
@@ -89,6 +103,7 @@ public sealed class KalshiClient : IKalshiClient
         _historical = new HistoricalClient(kalshiHttpClient);
         _portfolio = new PortfolioClient(kalshiHttpClient);
         _users = new UserClient(kalshiHttpClient);
+        _account = new AccountClient(kalshiHttpClient);
     }
 
     /// <summary>
@@ -108,6 +123,7 @@ public sealed class KalshiClient : IKalshiClient
         _historical = new HistoricalClient(httpClient);
         _portfolio = new PortfolioClient(httpClient);
         _users = new UserClient(httpClient);
+        _account = new AccountClient(httpClient);
     }
 
     /// <summary>
@@ -136,6 +152,7 @@ public sealed class KalshiClient : IKalshiClient
         _historical = null;
         _portfolio = portfolio ?? throw new ArgumentNullException(nameof(portfolio));
         _users = users ?? throw new ArgumentNullException(nameof(users));
+        _account = null;
     }
 
     /// <inheritdoc />
@@ -145,6 +162,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _exchange;
+        }
+    }
+
+    /// <inheritdoc />
+    public IAccountClient? Account
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _account;
         }
     }
 
@@ -227,6 +254,7 @@ public sealed class KalshiClient : IKalshiClient
         // Dispose resources we own (from direct instantiation)
         _ownedHttpClient?.Dispose();
         _ownedSigner?.Dispose();
+        _ownedRateLimiter?.Dispose();
     }
 }
 

@@ -100,7 +100,7 @@ public sealed class EventClientTests : IDisposable
         result.Title.Should().Be("Apple Stock Events");
         result.SubTitle.Should().Be("Q1 2024");
         result.Category.Should().Be("tech");
-        result.MutuallyExclusive.Should().BeTrue();
+        result.IsMutuallyExclusive.Should().BeTrue();
         result.SeriesTicker.Should().Be("TECH-SERIES");
         result.CollateralReturnType.Should().Be("binary");
         result.AvailableOnBrokers.Should().BeTrue();
@@ -253,7 +253,7 @@ public sealed class EventClientTests : IDisposable
 
         var query = new EventQuery
         {
-            Status = EventStatus.Open,
+            EventStatus = EventStatus.Open,
             SeriesTicker = "SERIES-123",
             Limit = 50
         };
@@ -345,7 +345,7 @@ public sealed class EventClientTests : IDisposable
                 }
                 """));
 
-        var query = new EventQuery { WithNestedMarkets = true };
+        var query = new EventQuery { IncludeNestedMarkets = true };
 
         // Act
         var result = await _client.ListEventsAsync(query);
@@ -515,7 +515,7 @@ public sealed class EventClientTests : IDisposable
                 }
                 """));
 
-        var query = new EventQuery { Status = EventStatus.Closed };
+        var query = new EventQuery { EventStatus = EventStatus.Closed };
 
         var result = await _client.ListEventsAsync(query);
 
@@ -563,7 +563,7 @@ public sealed class EventClientTests : IDisposable
         ev.Title.Should().Be("S&P 500 Daily");
         ev.SubTitle.Should().Be("Jan 2024");
         ev.Category.Should().Be("finance");
-        ev.MutuallyExclusive.Should().BeFalse();
+        ev.IsMutuallyExclusive.Should().BeFalse();
         ev.SeriesTicker.Should().Be("INXD");
         ev.CollateralReturnType.Should().Be("binary");
         ev.AvailableOnBrokers.Should().BeFalse();

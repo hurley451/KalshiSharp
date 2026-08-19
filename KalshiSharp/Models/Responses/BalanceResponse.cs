@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace KalshiSharp.Models.Responses;
 
 /// <summary>
@@ -22,4 +24,20 @@ public sealed record BalanceResponse
     /// Unix timestamp of the last update to the balance.
     /// </summary>
     public required long UpdatedTs { get; init; }
+
+    /// <summary>Balance amounts broken down by exchange index.</summary>
+    [JsonPropertyName("balance_breakdown")]
+    public IReadOnlyList<ExchangeBalanceResponse> BalanceBreakdown { get; init; } = [];
+}
+
+/// <summary>A balance amount for one exchange index.</summary>
+public sealed record ExchangeBalanceResponse
+{
+    /// <summary>Exchange shard index.</summary>
+    [JsonPropertyName("exchange_index")]
+    public required int ExchangeIndex { get; init; }
+
+    /// <summary>Fixed-point dollar balance.</summary>
+    [JsonPropertyName("balance")]
+    public required string Balance { get; init; }
 }

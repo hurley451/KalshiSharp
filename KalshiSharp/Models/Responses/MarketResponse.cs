@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using KalshiSharp.Models.Enums;
 
@@ -272,6 +273,12 @@ public sealed record MarketResponse
     /// Cap strike for ranged markets.
     /// </summary>
     public decimal? CapStrike { get; init; }
+
+    /// <summary>Current strike interpretation for numeric or custom markets.</summary>
+    public string? StrikeType { get; init; }
+
+    /// <summary>Custom strike metadata whose JSON shape varies by market type.</summary>
+    public JsonElement? CustomStrike { get; init; }
 
     /// <summary>A supported price interval.</summary>
     public sealed record PriceRange
