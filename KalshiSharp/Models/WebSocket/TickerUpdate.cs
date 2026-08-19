@@ -87,6 +87,10 @@ namespace KalshiSharp.Models.WebSocket
             [JsonPropertyName("ts")]
             public long TimeStamp { get; init; }
 
+            /// <summary>Unix timestamp for the update in milliseconds.</summary>
+            [JsonPropertyName("ts_ms")]
+            public long? TsMs { get; init; }
+
             /// <summary>
             /// Number of dollars traded in the market so far
             /// </summary>

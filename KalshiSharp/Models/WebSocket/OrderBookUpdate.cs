@@ -43,6 +43,14 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
         [JsonPropertyName("delta")]
         public required int Delta { get; init; }
 
+        /// <summary>Price level in dollars.</summary>
+        [JsonPropertyName("price_dollars")]
+        public string? PriceDollars { get; init; }
+
+        /// <summary>Quantity change as a fixed-point count.</summary>
+        [JsonPropertyName("delta_fp")]
+        public string? DeltaFp { get; init; }
+
         /// <summary>
         /// Side of the order book: "yes" or "no".
         /// </summary>
@@ -72,6 +80,10 @@ public sealed record OrderBookUpdate : WebSocketMessage<OrderBookUpdate.MessageB
         /// </summary>
         [JsonPropertyName("ts")]
         public DateTimeOffset? Timestamp { get; init; }
+
+        /// <summary>Timestamp in Unix milliseconds.</summary>
+        [JsonPropertyName("ts_ms")]
+        public long? TsMs { get; init; }
 
         /// <summary>
         /// Whether this is the Yes side.

@@ -283,7 +283,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
                 "type": "trade",
                 "seq": 999,
                 "msg": {
-                    "ts": 1704067200000,
+                    "ts": 1704067200,
                     "market_ticker": "MARKET-XYZ",
                     "market_id": "6F31765E-D070-41B9-A6EA-6AF3274B362B",
                     "trade_id": "trade-123",
@@ -324,6 +324,98 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         trade.Message.TradeId!.Should().Be("trade-123");
         trade.Message.Count!.Should().Be(50);
         trade.Message.YesPrice!.Should().Be(65);
+    }
+
+    [Fact]
+    public void CurrentTradePayload_UsesMillisecondTimestampAndFixedPointFields()
+    {
+        const string json = """
+            {
+              "type": "trade",
+              "seq": 1000,
+              "msg": {
+                "trade_id": "trade-current",
+                "market_ticker": "KXTEST-26AUG19",
+                "yes_price_dollars": "0.4325",
+                "no_price_dollars": "0.5675",
+                "count_fp": "10.50",
+                "is_block_trade": true,
+                "ts": 1787155200,
+                "ts_ms": 1787155200123
+              }
+            }
+            """;
+
+        var message = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default);
+
+        var trade = message.Should().BeOfType<TradeUpdate>().Subject;
+        trade.Message.YesPriceDollars.Should().Be("0.4325");
+        trade.Message.CountFp.Should().Be("10.50");
+        trade.Message.IsBlockTrade.Should().BeTrue();
+        trade.Message.TimeStamp.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1787155200123));
+    }
+
+    [Fact]
+    public void CurrentPrivateChannelPayloads_DeserializeWithoutLegacyFields()
+    {
+        const string orderJson = """
+            {
+              "type": "user_order",
+              "msg": {
+                "order_id": "order-current",
+                "ticker": "KXTEST-26AUG19",
+                "outcome_side": "yes",
+                "book_side": "bid",
+                "yes_price_dollars": "0.4325",
+                "initial_count_fp": "10.00",
+                "remaining_count_fp": "4.00",
+                "fill_count_fp": "6.00",
+                "created_ts_ms": 1787155200123,
+                "last_updated_ts_ms": 1787155200456
+              }
+            }
+            """;
+        const string fillJson = """
+            {
+              "type": "fill",
+              "msg": {
+                "trade_id": "trade-current",
+                "order_id": "order-current",
+                "market_ticker": "KXTEST-26AUG19",
+                "is_taker": true,
+                "outcome_side": "yes",
+                "book_side": "bid",
+                "yes_price_dollars": "0.4325",
+                "count_fp": "6.00",
+                "ts_ms": 1787155200456
+              }
+            }
+            """;
+        const string positionJson = """
+            {
+              "type": "market_position",
+              "msg": {
+                "user_id": "user-current",
+                "market_ticker": "KXTEST-26AUG19",
+                "position_fp": "6.00",
+                "position_cost_dollars": "2.5950",
+                "ts_ms": 1787155200456
+              }
+            }
+            """;
+
+        var order = JsonSerializer.Deserialize<WebSocketMessage>(orderJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<UserOrderUpdate>().Subject;
+        var fill = JsonSerializer.Deserialize<WebSocketMessage>(fillJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<FillUpdate>().Subject;
+        var position = JsonSerializer.Deserialize<WebSocketMessage>(positionJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<MarketPositionUpdate>().Subject;
+
+        order.Message.RemainingCountFp.Should().Be("4.00");
+        order.Message.LastUpdatedTsMs.Should().Be(1787155200456);
+        fill.Message.CountFp.Should().Be("6.00");
+        fill.Message.OutcomeSide.Should().Be(OrderSide.Yes);
+        position.Message.PositionFp.Should().Be("6.00");
     }
 
     [Fact]
