@@ -11,15 +11,15 @@ public enum TimeInForce
     /// <summary>
     /// Good Till Cancelled - order remains active until explicitly cancelled.
     /// </summary>
-    GoodTillCanceled,
+    Gtc,
 
     /// <summary>
     /// Immediate Or Cancel - execute immediately and cancel any unfilled portion.
     /// </summary>
-    ImmediateOrCancel,
+    Ioc,
 
     /// <summary>
     /// Fill Or Kill - execute entire order immediately or cancel completely.
     /// </summary>
-    FillOrKill
+    Fok
 }

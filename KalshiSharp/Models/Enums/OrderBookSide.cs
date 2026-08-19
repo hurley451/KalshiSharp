@@ -11,12 +11,12 @@ namespace KalshiSharp.Models.Enums;
 public enum OrderBookSide
 {
     /// <summary>
-    /// Bid — buy YES contracts.
+    /// Bid: buy YES contracts.
     /// </summary>
     Bid,
 
     /// <summary>
-    /// Ask — sell YES contracts (equivalent to buying NO at 1 - price).
+    /// Ask: sell YES contracts (equivalent to buying NO at 1 - price).
     /// </summary>
     Ask
 }
