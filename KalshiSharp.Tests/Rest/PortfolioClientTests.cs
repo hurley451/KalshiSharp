@@ -6,6 +6,7 @@ using KalshiSharp.Tests.Auth;
 using KalshiSharp.Configuration;
 using KalshiSharp.Http;
 using KalshiSharp.Models.Enums;
+using KalshiSharp.Models.Requests;
 using KalshiSharp.Rest.Portfolio;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -395,5 +396,108 @@ public sealed class PortfolioClientTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<TaskCanceledException>(
             () => _portfolioClient.ListFillsAsync(cancellationToken: cts.Token));
+    }
+
+    [Fact]
+    public async Task GetBalanceAsync_CurrentPayload_ParsesDollarBalance()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/balance")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{ "balance": 5600, "balance_dollars": "56.0000", "portfolio_value": 7000, "updated_ts": 1755600000 }"""));
+
+        var result = await _portfolioClient.GetBalanceAsync();
+
+        result.Balance.Should().Be(5600);
+        result.BalanceDollars.Should().Be("56.0000");
+    }
+
+    [Fact]
+    public async Task ListPositionsAsync_CurrentPayload_ParsesMarketAndEventPositions()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/positions")
+                .WithParam("count_filter", "position,total_traded")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "market_positions": [{
+                        "ticker": "MARKET-1",
+                        "total_traded_dollars": "5.6000",
+                        "position_fp": "10.00",
+                        "market_exposure_dollars": "2.5000",
+                        "realized_pnl_dollars": "0.1000",
+                        "fees_paid_dollars": "0.0200",
+                        "last_updated_ts": "2026-08-19T12:00:00Z"
+                    }],
+                    "event_positions": [{
+                        "event_ticker": "EVENT-1",
+                        "total_cost_dollars": "5.6000",
+                        "total_cost_shares_fp": "10.00",
+                        "event_exposure_dollars": "2.5000",
+                        "realized_pnl_dollars": "0.1000",
+                        "fees_paid_dollars": "0.0200"
+                    }],
+                    "cursor": null
+                }
+                """));
+
+        var result = await _portfolioClient.ListPositionsAsync(new PositionQuery
+        {
+            CountFilter = ["position", "total_traded"]
+        });
+
+        result.Items.Should().ContainSingle();
+        result.Items[0].PositionFp.Should().Be("10.00");
+        result.EventPositions.Should().ContainSingle().Which.EventTicker.Should().Be("EVENT-1");
+    }
+
+    [Fact]
+    public async Task ListFillsAsync_CurrentPayload_ParsesFixedPointFieldsAndTimeFilters()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/fills")
+                .WithParam("min_ts", "1755600000")
+                .WithParam("max_ts", "1755603600")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "fills": [{
+                        "fill_id": "fill-1",
+                        "trade_id": "trade-1",
+                        "order_id": "order-1",
+                        "ticker": "MARKET-1",
+                        "market_ticker": "MARKET-1",
+                        "count_fp": "10.00",
+                        "yes_price_dollars": "0.5600",
+                        "no_price_dollars": "0.4400",
+                        "is_taker": true,
+                        "fee_cost": "0.0200",
+                        "created_time": "2026-08-19T12:00:00Z",
+                        "ts": 1755600000
+                    }],
+                    "cursor": null
+                }
+                """));
+
+        var result = await _portfolioClient.ListFillsAsync(new FillQuery
+        {
+            MinTime = DateTimeOffset.FromUnixTimeSeconds(1755600000),
+            MaxTime = DateTimeOffset.FromUnixTimeSeconds(1755603600)
+        });
+
+        result.Items.Should().ContainSingle();
+        result.Items[0].CountFp.Should().Be("10.00");
+        result.Items[0].YesPriceDollars.Should().Be("0.5600");
+        result.Items[0].FeeCost.Should().Be("0.0200");
     }
 }

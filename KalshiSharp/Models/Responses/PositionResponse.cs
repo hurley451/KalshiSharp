@@ -13,27 +13,45 @@ public sealed record PositionResponse
     /// <summary>
     /// Event ticker for the market.
     /// </summary>
-    public required string EventTicker { get; init; }
+    public string? EventTicker { get; init; }
 
     /// <summary>
     /// Market exposure - positive means long Yes, negative means long No.
     /// </summary>
-    public required int MarketExposure { get; init; }
+    public int MarketExposure { get; init; }
 
     /// <summary>
     /// Total position in cents (absolute value).
     /// </summary>
-    public required int Position { get; init; }
+    public int Position { get; init; }
 
     /// <summary>
     /// Number of Yes contracts held.
     /// </summary>
-    public required int YesContracts { get; init; }
+    public int YesContracts { get; init; }
 
     /// <summary>
     /// Number of No contracts held.
     /// </summary>
-    public required int NoContracts { get; init; }
+    public int NoContracts { get; init; }
+
+    /// <summary>Total traded value in dollars.</summary>
+    public string? TotalTradedDollars { get; init; }
+
+    /// <summary>Position as a fixed-point count.</summary>
+    public string? PositionFp { get; init; }
+
+    /// <summary>Market exposure in dollars.</summary>
+    public string? MarketExposureDollars { get; init; }
+
+    /// <summary>Realized profit or loss in dollars.</summary>
+    public string? RealizedPnlDollars { get; init; }
+
+    /// <summary>Fees paid in dollars.</summary>
+    public string? FeesPaidDollars { get; init; }
+
+    /// <summary>When the position was last updated.</summary>
+    public DateTimeOffset? LastUpdatedTs { get; init; }
 
     /// <summary>
     /// Average price paid for the position.

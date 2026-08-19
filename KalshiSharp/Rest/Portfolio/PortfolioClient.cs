@@ -1,4 +1,5 @@
 using KalshiSharp.Http;
+using KalshiSharp.Models.Requests;
 using KalshiSharp.Models.Responses;
 
 namespace KalshiSharp.Rest.Portfolio;
@@ -66,6 +67,32 @@ internal sealed class PortfolioClient : IPortfolioClient
         {
             Method = HttpMethod.Get,
             Path = $"{BasePath}/fills{queryString}"
+        };
+
+        return _httpClient.SendAsync<FillsResponse>(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<PositionsResponse> ListPositionsAsync(PositionQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/positions{query.ToQueryString()}"
+        };
+
+        return _httpClient.SendAsync<PositionsResponse>(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<FillsResponse> ListFillsAsync(FillQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/fills{query.ToQueryString()}"
         };
 
         return _httpClient.SendAsync<FillsResponse>(httpRequest, cancellationToken);

@@ -10,6 +10,9 @@ public sealed record BalanceResponse
     /// </summary>
     public required long Balance { get; init; }
 
+    /// <summary>Member's available balance as a fixed-point dollar string.</summary>
+    public string? BalanceDollars { get; init; }
+
     /// <summary>
     /// Member's portfolio value in cents. This is the current value of all positions held.
     /// </summary>

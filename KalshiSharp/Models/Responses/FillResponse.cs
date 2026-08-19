@@ -7,6 +7,9 @@ namespace KalshiSharp.Models.Responses;
 /// </summary>
 public sealed record FillResponse
 {
+    /// <summary>Unique fill identifier.</summary>
+    public string? FillId { get; init; }
+
     /// <summary>
     /// Unique identifier for this fill.
     /// </summary>
@@ -25,27 +28,51 @@ public sealed record FillResponse
     /// <summary>
     /// Side of the order (Yes or No).
     /// </summary>
-    public required OrderSide Side { get; init; }
+    public OrderSide Side { get; init; }
 
     /// <summary>
     /// Action (buy or sell).
     /// </summary>
-    public required string Action { get; init; }
+    public string? Action { get; init; }
 
     /// <summary>
     /// Number of contracts filled.
     /// </summary>
-    public required int Count { get; init; }
+    public int Count { get; init; }
 
     /// <summary>
     /// Yes price at which the fill executed (in cents).
     /// </summary>
-    public required int YesPrice { get; init; }
+    public int YesPrice { get; init; }
 
     /// <summary>
     /// No price at which the fill executed (in cents).
     /// </summary>
-    public required int NoPrice { get; init; }
+    public int NoPrice { get; init; }
+
+    /// <summary>Market ticker under the current fill contract.</summary>
+    public string? MarketTicker { get; init; }
+
+    /// <summary>Filled quantity as a fixed-point count.</summary>
+    public string? CountFp { get; init; }
+
+    /// <summary>YES execution price in dollars.</summary>
+    public string? YesPriceDollars { get; init; }
+
+    /// <summary>NO execution price in dollars.</summary>
+    public string? NoPriceDollars { get; init; }
+
+    /// <summary>Fee cost in dollars.</summary>
+    public string? FeeCost { get; init; }
+
+    /// <summary>Canonical outcome side, when supplied.</summary>
+    public OrderSide? OutcomeSide { get; init; }
+
+    /// <summary>Canonical book side, when supplied.</summary>
+    public OrderBookSide? BookSide { get; init; }
+
+    /// <summary>Matching-engine timestamp.</summary>
+    public long? Ts { get; init; }
 
     /// <summary>
     /// Whether this was a maker or taker fill.

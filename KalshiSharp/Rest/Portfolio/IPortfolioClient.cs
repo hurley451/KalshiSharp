@@ -1,3 +1,4 @@
+using KalshiSharp.Models.Requests;
 using KalshiSharp.Models.Responses;
 
 namespace KalshiSharp.Rest.Portfolio;
@@ -30,6 +31,9 @@ public interface IPortfolioClient
         string? eventTicker = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Lists positions using the current query contract.</summary>
+    Task<PositionsResponse> ListPositionsAsync(PositionQuery query, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Lists fills (trade executions) with optional filtering and pagination.
     /// </summary>
@@ -45,4 +49,7 @@ public interface IPortfolioClient
         string? ticker = null,
         string? orderId = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Lists fills using the current query contract.</summary>
+    Task<FillsResponse> ListFillsAsync(FillQuery query, CancellationToken cancellationToken = default);
 }
