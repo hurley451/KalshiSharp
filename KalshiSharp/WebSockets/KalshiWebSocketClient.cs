@@ -126,7 +126,7 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
         using var activity = StartConnectActivity();
 
         var uri = GetWebSocketUri();
-        LogConnecting(uri.ToString());
+        LogConnecting(uri);
 
         try
         {
@@ -146,13 +146,13 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
             _receiveCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _receiveTask = Task.Run(() => ReceiveLoopAsync(_receiveCts.Token), _receiveCts.Token);
 
-            LogConnected(uri.ToString());
+            LogConnected(uri);
             LogAuthenticated();
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
         {
-            LogConnectionFailed(uri.ToString(), ex);
+            LogConnectionFailed(uri, ex);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }
@@ -547,13 +547,13 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
     // Source-generated logging
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Connecting to WebSocket at {Uri}")]
-    private partial void LogConnecting(string uri);
+    private partial void LogConnecting(Uri uri);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "WebSocket connected to {Uri}")]
-    private partial void LogConnected(string uri);
+    private partial void LogConnected(Uri uri);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "WebSocket connection failed to {Uri}")]
-    private partial void LogConnectionFailed(string uri, Exception exception);
+    private partial void LogConnectionFailed(Uri uri, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "WebSocket authenticated")]
     private partial void LogAuthenticated();
