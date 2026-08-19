@@ -14,6 +14,26 @@ namespace KalshiSharp.Tests.Compatibility;
 public sealed class PublishedApiCompatibilityTests
 {
     [Fact]
+    public void RetiredIntegerOrderAndTradeMembers_AreNotPublished()
+    {
+        var orderMembers = typeof(OrderResponse).GetProperties().Select(property => property.Name);
+        var tradeMembers = typeof(TradeResponse).GetProperties().Select(property => property.Name);
+
+        orderMembers.Should().NotContain([
+            "YesPrice",
+            "NoPrice",
+            "FillCount",
+            "RemainingCount",
+            "InitialCount",
+            "TakerFees",
+            "MakerFees",
+            "TakerFillCost",
+            "MakerFillCost"
+        ]);
+        tradeMembers.Should().NotContain(["YesPrice", "NoPrice", "Count"]);
+    }
+
+    [Fact]
     public void CanonicalRequestBuilder_PreservesPublishedFormat()
     {
         var result = CanonicalRequestBuilder.Build(

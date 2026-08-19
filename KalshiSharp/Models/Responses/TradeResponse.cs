@@ -22,21 +22,6 @@ public sealed record TradeResponse
     /// </summary>
     public OrderSide Side { get; init; }
 
-    /// <summary>
-    /// Price at which the trade executed (in cents).
-    /// </summary>
-    public int YesPrice { get; init; }
-
-    /// <summary>
-    /// No price (derived from yes price).
-    /// </summary>
-    public int NoPrice { get; init; }
-
-    /// <summary>
-    /// Number of contracts traded.
-    /// </summary>
-    public int Count { get; init; }
-
     /// <summary>Number of contracts traded as a fixed-point count.</summary>
     public string? CountFp { get; init; }
 
