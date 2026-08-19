@@ -141,7 +141,11 @@ var order = await ordersV2.CreateOrderAsync(request);
 Console.WriteLine($"Order ID: {order.OrderId}, remaining: {order.RemainingCount}");
 
 // Cancel the order
-var cancelled = await ordersV2.CancelOrderAsync(order.OrderId);
+var cancelled = await ordersV2.CancelOrderAsync(order.OrderId, new CancelOrderQueryV2
+{
+    ExchangeIndex = -1,
+    MarketTicker = request.Ticker
+});
 ```
 
 ### Portfolio Information

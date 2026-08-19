@@ -27,6 +27,9 @@ public sealed record UserOrderUpdate : WebSocketMessage<UserOrderUpdate.MessageB
         /// <summary>Legacy outcome side.</summary>
         public OrderSide? Side { get; init; }
 
+        /// <summary>Legacy indicator that the order is on the YES outcome.</summary>
+        public bool? IsYes { get; init; }
+
         /// <summary>Canonical outcome side.</summary>
         public OrderSide? OutcomeSide { get; init; }
 
@@ -35,6 +38,12 @@ public sealed record UserOrderUpdate : WebSocketMessage<UserOrderUpdate.MessageB
 
         /// <summary>YES price in dollars.</summary>
         public string? YesPriceDollars { get; init; }
+
+        /// <summary>Total taker fill cost in dollars.</summary>
+        public string? TakerFillCostDollars { get; init; }
+
+        /// <summary>Total maker fill cost in dollars.</summary>
+        public string? MakerFillCostDollars { get; init; }
 
         /// <summary>Filled quantity as a fixed-point count.</summary>
         public string? FillCountFp { get; init; }

@@ -55,22 +55,22 @@ public sealed record MarketCandlesticksResponse
                 /// <summary>
                 /// Offer price on the market at the start of the candlestick period (in dollars).
                 /// </summary>
-                public required string OpenDollars { get; init; }
+                public string? OpenDollars { get; init; }
 
                 /// <summary>
                 /// Lowest offer price on the market during the candlestick period (in dollars).
                 /// </summary>
-                public required string LowDollars { get; init; }
+                public string? LowDollars { get; init; }
 
                 /// <summary>
                 /// Highest offer price on the market during the candlestick period (in dollars).
                 /// </summary>
-                public required string HighDollars { get; init; }
+                public string? HighDollars { get; init; }
 
                 /// <summary>
                 /// Offer price on the market at the end of the candlestick period (in dollars).
                 /// </summary>
-                public required string CloseDollars { get; init; }
+                public string? CloseDollars { get; init; }
             }
 
             public sealed record PriceOhlc

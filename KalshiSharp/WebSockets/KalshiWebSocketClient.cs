@@ -350,7 +350,7 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
         }
         catch (JsonException ex)
         {
-            LogJsonParseError(json, ex);
+            LogJsonParseError(ex);
 
             // Create unknown message for unparseable content
             var unknown = new UnknownMessage
@@ -579,8 +579,8 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
     [LoggerMessage(Level = LogLevel.Error, Message = "Error in receive loop")]
     private partial void LogReceiveError(Exception exception);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse WebSocket message: {Json}")]
-    private partial void LogJsonParseError(string json, Exception exception);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse WebSocket message")]
+    private partial void LogJsonParseError(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Attempting reconnect #{Attempt} in {DelaySeconds:F1}s")]
     private partial void LogReconnecting(int attempt, double delaySeconds);

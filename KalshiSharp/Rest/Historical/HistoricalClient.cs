@@ -40,6 +40,13 @@ internal sealed class HistoricalClient : IHistoricalClient
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ticker);
         ArgumentNullException.ThrowIfNull(query);
+        if (query.IncludeLatestBeforeStart)
+        {
+            throw new ArgumentException(
+                "Historical candlesticks do not support IncludeLatestBeforeStart.",
+                nameof(query));
+        }
+
         return GetAsync<HistoricalMarketCandlesticksResponse>(
             $"/markets/{Uri.EscapeDataString(ticker)}/candlesticks{query.ToQueryString()}",
             cancellationToken);

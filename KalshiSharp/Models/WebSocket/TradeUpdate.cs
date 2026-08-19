@@ -29,7 +29,7 @@ public sealed record TradeUpdate : WebSocketMessage<TradeUpdate.MessageBody>
         /// Side of the trade (Yes or No).
         /// </summary>
         [JsonPropertyName("side")]
-        public OrderSide? Side { get; init; }
+        public OrderSide Side { get; init; }
 
         /// <summary>
         /// Price at which the trade executed (in cents).

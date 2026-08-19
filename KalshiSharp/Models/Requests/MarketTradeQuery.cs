@@ -7,7 +7,7 @@ namespace KalshiSharp.Models.Requests;
 public sealed record MarketTradeQuery : PaginationParameters
 {
     /// <summary>Market ticker filter.</summary>
-    public required string Ticker { get; init; }
+    public string? Ticker { get; init; }
 
     /// <summary>Minimum trade timestamp.</summary>
     public DateTimeOffset? MinTimestamp { get; init; }
@@ -21,10 +21,9 @@ public sealed record MarketTradeQuery : PaginationParameters
     /// <summary>Builds the encoded query string.</summary>
     public string ToQueryString()
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(Ticker);
         var builder = new QueryStringBuilder();
         AppendPaginationParameters(builder);
-        builder.Append("ticker", Ticker);
+        builder.AppendIfNotEmpty("ticker", Ticker);
         AppendTimestamp(builder, "min_ts", MinTimestamp);
         AppendTimestamp(builder, "max_ts", MaxTimestamp);
         if (IsBlockTrade.HasValue)

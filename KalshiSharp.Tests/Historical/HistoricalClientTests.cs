@@ -158,6 +158,22 @@ public sealed class HistoricalClientTests : IDisposable
     }
 
     [Fact]
+    public async Task GetMarketCandlesticksAsync_RejectsActiveOnlyLatestFlag()
+    {
+        var query = new MarketCandlesticksQuery
+        {
+            StartTimestamp = DateTimeOffset.FromUnixTimeSeconds(1787097600),
+            EndTimestamp = DateTimeOffset.FromUnixTimeSeconds(1787184000),
+            PeriodInterval = PeriodInterval.OneHour,
+            IncludeLatestBeforeStart = true
+        };
+
+        var act = () => _client.GetMarketCandlesticksAsync("KXTEST-26AUG19", query);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
     public async Task ArchiveCollections_DeserializeActiveContracts()
     {
         _server.Given(Request.Create()

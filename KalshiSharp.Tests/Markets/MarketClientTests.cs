@@ -420,6 +420,23 @@ public sealed class MarketClientTests : IDisposable
     }
 
     [Fact]
+    public async Task GetTradesAsync_WithCurrentQuery_AllowsAllMarkets()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/markets/trades")
+                .WithParam("is_block_trade", "true")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{ "trades": [], "cursor": null }"""));
+
+        var result = await _client.GetTradesAsync(new MarketTradeQuery { IsBlockTrade = true });
+
+        result.Trades.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task GetTradesAsync_WithEmptyTicker_ThrowsArgumentException()
     {
         // Act & Assert
@@ -551,7 +568,7 @@ public sealed class MarketClientTests : IDisposable
                     "ticker": "MARKET",
                     "candlesticks": [{
                         "end_period_ts": 1755603600,
-                        "yes_bid": { "open_dollars": "0.5000", "low_dollars": "0.4900", "high_dollars": "0.5100", "close_dollars": "0.5050" },
+                        "yes_bid": { "open_dollars": null, "low_dollars": null, "high_dollars": null, "close_dollars": null },
                         "yes_ask": { "open_dollars": "0.5200", "low_dollars": "0.5100", "high_dollars": "0.5300", "close_dollars": "0.5150" },
                         "price": { "close_dollars": "0.5100" },
                         "volume_fp": "10.00",
@@ -572,6 +589,7 @@ public sealed class MarketClientTests : IDisposable
 
         result.Ticker.Should().Be("MARKET");
         result.Candlesticks.Should().ContainSingle();
+        result.Candlesticks[0].YesBid.OpenDollars.Should().BeNull();
         result.Candlesticks[0].VolumeFp.Should().Be("10.00");
     }
 }

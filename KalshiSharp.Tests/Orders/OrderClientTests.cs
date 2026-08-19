@@ -653,6 +653,45 @@ public sealed class OrderClientTests : IDisposable
     }
 
     [Fact]
+    public async Task CancelOrderV2Async_AutoRouteIncludesMarketTicker()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders/order-v2")
+                .WithParam("exchange_index", "-1")
+                .WithParam("market_ticker", "MARKET-ABC")
+                .UsingDelete())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "order_id": "order-v2",
+                    "reduced_by": "10.00",
+                    "ts_ms": 1755600001123
+                }
+                """));
+
+        var result = await _clientV2.CancelOrderAsync("order-v2", new CancelOrderQueryV2
+        {
+            ExchangeIndex = -1,
+            MarketTicker = "MARKET-ABC"
+        });
+
+        result.OrderId.Should().Be("order-v2");
+        result.ReducedBy.Should().Be("10.00");
+    }
+
+    [Fact]
+    public void CancelOrderV2Query_AutoRouteRequiresMarketTicker()
+    {
+        var query = new CancelOrderQueryV2 { ExchangeIndex = -1 };
+
+        var act = query.ToQueryString;
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
     public async Task GetOrderAsync_CurrentPayload_ParsesFixedPointFields()
     {
         const string orderId = "order-current";
