@@ -84,11 +84,11 @@ public sealed class OrderClientTests : IDisposable
                     "type": "limit",
                     "status": "resting",
                     "action": "buy",
-                    "fill_count": 0,
-                    "initial_count": 10,
-                    "remaining_count": 10,
-                    "yes_price": 55,
-                    "no_price": 45,
+                    "fill_count_fp": "0.00",
+                    "initial_count_fp": "10.00",
+                    "remaining_count_fp": "10.00",
+                    "yes_price_dollars": "0.5500",
+                    "no_price_dollars": "0.4500",
                     "time_in_force": "gtc",
                     "created_time": 1704067200000
                 }
@@ -115,10 +115,10 @@ public sealed class OrderClientTests : IDisposable
         result.Type.Should().Be(OrderType.Limit);
         result.Status.Should().Be(OrderStatus.Resting);
         result.Action.Should().Be("buy");
-        result.InitialCount.Should().Be(10);
-        result.RemainingCount.Should().Be(10);
-        result.YesPrice.Should().Be(55);
-        result.NoPrice.Should().Be(45);
+        result.InitialCountFp.Should().Be("10.00");
+        result.RemainingCountFp.Should().Be("10.00");
+        result.YesPriceDollars.Should().Be("0.5500");
+        result.NoPriceDollars.Should().Be("0.4500");
     }
 
     [Fact]
@@ -176,11 +176,11 @@ public sealed class OrderClientTests : IDisposable
                     "type": "limit",
                     "status": "resting",
                     "action": "buy",
-                    "fill_count": 0,
-                    "initial_count": 15,
-                    "remaining_count": 15,
-                    "yes_price": 60,
-                    "no_price": 40,
+                    "fill_count_fp": "0.00",
+                    "initial_count_fp": "15.00",
+                    "remaining_count_fp": "15.00",
+                    "yes_price_dollars": "0.6000",
+                    "no_price_dollars": "0.4000",
                     "time_in_force": "gtc",
                     "created_time": 1704067200000,
                     "last_update_time": 1704067300000
@@ -199,8 +199,8 @@ public sealed class OrderClientTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         result.OrderId.Should().Be("order-12345");
-        result.InitialCount.Should().Be(15);
-        result.YesPrice.Should().Be(60);
+        result.InitialCountFp.Should().Be("15.00");
+        result.YesPriceDollars.Should().Be("0.6000");
         result.LastUpdateTime.Should().NotBeNull();
     }
 
@@ -241,11 +241,11 @@ public sealed class OrderClientTests : IDisposable
                     "type": "limit",
                     "status": "canceled",
                     "action": "buy",
-                    "fill_count": 0,
-                    "initial_count": 10,
-                    "remaining_count": 10,
-                    "yes_price": 55,
-                    "no_price": 45,
+                    "fill_count_fp": "0.00",
+                    "initial_count_fp": "10.00",
+                    "remaining_count_fp": "10.00",
+                    "yes_price_dollars": "0.5500",
+                    "no_price_dollars": "0.4500",
                     "time_in_force": "gtc",
                     "created_time": 1704067200000,
                     "last_update_time": 1704067200000
@@ -309,11 +309,11 @@ public sealed class OrderClientTests : IDisposable
                         "type": "market",
                         "status": "executed",
                         "action": "sell",
-                        "fill_count": 5,
-                        "initial_count": 5,
-                        "remaining_count": 0,
-                        "yes_price": 45,
-                        "no_price": 55,
+                        "fill_count_fp": "5.00",
+                        "initial_count_fp": "5.00",
+                        "remaining_count_fp": "0.00",
+                        "yes_price_dollars": "0.4500",
+                        "no_price_dollars": "0.5500",
                         "time_in_force": "ioc",
                         "created_time": 1704067200000
                     }
@@ -332,9 +332,9 @@ public sealed class OrderClientTests : IDisposable
         result.Type.Should().Be(OrderType.Market);
         result.Status.Should().Be(OrderStatus.Executed);
         result.Action.Should().Be("sell");
-        result.InitialCount.Should().Be(5);
-        result.RemainingCount.Should().Be(0);
-        result.FillCount.Should().Be(5);
+        result.InitialCountFp.Should().Be("5.00");
+        result.RemainingCountFp.Should().Be("0.00");
+        result.FillCountFp.Should().Be("5.00");
     }
 
     [Fact]
@@ -381,11 +381,11 @@ public sealed class OrderClientTests : IDisposable
                             "type": "limit",
                             "status": "resting",
                             "action": "buy",
-                            "fill_count": 5,
-                            "initial_count": 10,                            
-                            "remaining_count": 5,
-                            "yes_price": 50,
-                            "no_price": 50,
+                            "fill_count_fp": "5.00",
+                            "initial_count_fp": "10.00",
+                            "remaining_count_fp": "5.00",
+                            "yes_price_dollars": "0.5000",
+                            "no_price_dollars": "0.5000",
                             "time_in_force": "gtc",
                             "created_time": 1704067200000
                         },
@@ -396,11 +396,11 @@ public sealed class OrderClientTests : IDisposable
                             "type": "limit",
                             "status": "resting",
                             "action": "buy",
-                            "fill_count": 0,
-                            "initial_count": 20,
-                            "remaining_count": 20,
-                            "yes_price": 40,
-                            "no_price": 60,
+                            "fill_count_fp": "0.00",
+                            "initial_count_fp": "20.00",
+                            "remaining_count_fp": "20.00",
+                            "yes_price_dollars": "0.4000",
+                            "no_price_dollars": "0.6000",
                             "time_in_force": "gtc",
                             "created_time": 1704067300000
                         }
@@ -416,7 +416,7 @@ public sealed class OrderClientTests : IDisposable
         result.Should().NotBeNull();
         result.Items.Should().HaveCount(2);
         result.Items[0].OrderId.Should().Be("order-001");
-        result.Items[0].FillCount.Should().Be(5);
+        result.Items[0].FillCountFp.Should().Be("5.00");
         result.Items[1].OrderId.Should().Be("order-002");
         result.Cursor.Should().Be("next-page-cursor");
         result.HasMore.Should().BeTrue();
@@ -479,11 +479,11 @@ public sealed class OrderClientTests : IDisposable
                             "type": "limit",
                             "status": "canceled",
                             "action": "buy",
-                            "fill_count": 0,
-                            "initial_count": 5,
-                            "remaining_count": 5,
-                            "yes_price": 70,
-                            "no_price": 30,
+                            "fill_count_fp": "0.00",
+                            "initial_count_fp": "5.00",
+                            "remaining_count_fp": "5.00",
+                            "yes_price_dollars": "0.7000",
+                            "no_price_dollars": "0.3000",
                             "time_in_force": "gtc",
                             "created_time": 1704067400000
                         }
@@ -552,11 +552,11 @@ public sealed class OrderClientTests : IDisposable
                     "type": "limit",
                     "status": "resting",
                     "action": "buy",
-                    "fill_count": 0,
-                    "initial_count": 1,
-                    "remaining_count": 1,
-                    "yes_price": 50,
-                    "no_price": 50,
+                    "fill_count_fp": "0.00",
+                    "initial_count_fp": "1.00",
+                    "remaining_count_fp": "1.00",
+                    "yes_price_dollars": "0.5000",
+                    "no_price_dollars": "0.5000",
                     "time_in_force": "gtc",
                     "created_time": 1704067200000
                 }

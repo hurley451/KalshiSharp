@@ -48,16 +48,6 @@ public sealed record OrderResponse
     public OrderStatus Status { get; init; }
 
     /// <summary>
-    /// Yes price in cents (1-99).
-    /// </summary>
-    public int YesPrice { get; init; }
-
-    /// <summary>
-    /// No price in cents (derived from yes price).
-    /// </summary>
-    public int NoPrice { get; init; }
-
-    /// <summary>
     /// Yes price in dollars (string representation).
     /// </summary>
     public string? YesPriceDollars { get; init; }
@@ -67,21 +57,6 @@ public sealed record OrderResponse
     /// </summary>
     public string? NoPriceDollars { get; init; }
 
-    /// <summary>
-    /// Number of contracts filled.
-    /// </summary>
-    public int FillCount { get; init; }
-
-    /// <summary>
-    /// Quantity remaining (not yet filled).
-    /// </summary>
-    public int RemainingCount { get; init; }
-
-    /// <summary>
-    /// Initial quantity ordered.
-    /// </summary>
-    public int InitialCount { get; init; }
-
     /// <summary>Number of contracts filled as a fixed-point count.</summary>
     public string? FillCountFp { get; init; }
 
@@ -90,26 +65,6 @@ public sealed record OrderResponse
 
     /// <summary>Initial order quantity as a fixed-point count.</summary>
     public string? InitialCountFp { get; init; }
-
-    /// <summary>
-    /// Taker fees in cents.
-    /// </summary>
-    public int? TakerFees { get; init; }
-
-    /// <summary>
-    /// Maker fees in cents.
-    /// </summary>
-    public int? MakerFees { get; init; }
-
-    /// <summary>
-    /// Taker fill cost in cents.
-    /// </summary>
-    public int? TakerFillCost { get; init; }
-
-    /// <summary>
-    /// Maker fill cost in cents.
-    /// </summary>
-    public int? MakerFillCost { get; init; }
 
     /// <summary>
     /// Taker fill cost in dollars (string representation).
