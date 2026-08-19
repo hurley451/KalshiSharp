@@ -33,6 +33,11 @@ public interface IKalshiClient : IDisposable
     IOrderClient Orders { get; }
 
     /// <summary>
+    /// Gets the active V2 event-order mutation client when the implementation supports it.
+    /// </summary>
+    IOrderClientV2? OrdersV2 => null;
+
+    /// <summary>
     /// Gets the portfolio client for balance, positions, and fills endpoints.
     /// </summary>
     IPortfolioClient Portfolio { get; }

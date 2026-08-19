@@ -23,6 +23,7 @@ public sealed class OrderClientTests : IDisposable
 {
     private readonly WireMockServer _server;
     private readonly OrderClient _client;
+    private readonly OrderClientV2 _clientV2;
     private readonly IKalshiRequestSigner _signer;
 
     public OrderClientTests()
@@ -55,6 +56,7 @@ public sealed class OrderClientTests : IDisposable
             NullLogger<KalshiHttpClient>.Instance);
 
         _client = new OrderClient(kalshiHttpClient);
+        _clientV2 = new OrderClientV2(kalshiHttpClient);
     }
 
     public void Dispose()
@@ -299,21 +301,22 @@ public sealed class OrderClientTests : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""
                 {
-                    "order_id": "order-12345",
-                    "client_order_id": "client-order-abc",
-                    "ticker": "MARKET-ABC",
-                    "side": "no",
-                    "type": "market",
-                    "status": "executed",
-                    "action": "sell",
-                    "fill_count": 5,
-                    "initial_count": 5,
-                    "remaining_count": 0,
-                    "yes_price": 45,
-                    "no_price": 55,
-                    "time_in_force": "ioc",
-                    "created_time": 1704067200000,
-                    "fees_paid": 10
+                    "order": {
+                        "order_id": "order-12345",
+                        "client_order_id": "client-order-abc",
+                        "ticker": "MARKET-ABC",
+                        "side": "no",
+                        "type": "market",
+                        "status": "executed",
+                        "action": "sell",
+                        "fill_count": 5,
+                        "initial_count": 5,
+                        "remaining_count": 0,
+                        "yes_price": 45,
+                        "no_price": 55,
+                        "time_in_force": "ioc",
+                        "created_time": 1704067200000
+                    }
                 }
                 """));
 
@@ -605,5 +608,80 @@ public sealed class OrderClientTests : IDisposable
             () => _client.CreateOrderAsync(request));
 
         exception.ErrorCode.Should().Be("unauthorized");
+    }
+
+    [Fact]
+    public async Task CreateOrderV2Async_UsesCurrentEventOrderContract()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders")
+                .WithBody(body => body is not null
+                    && body.Contains("\"side\":\"bid\"")
+                    && body.Contains("\"count\":\"10.00\"")
+                    && body.Contains("\"price\":\"0.5600\"")
+                    && body.Contains("\"time_in_force\":\"good_till_canceled\"")
+                    && body.Contains("\"exchange_index\":-1"))
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(201)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "order_id": "order-v2",
+                    "client_order_id": "client-v2",
+                    "fill_count": "0.00",
+                    "remaining_count": "10.00",
+                    "ts_ms": 1755600000123
+                }
+                """));
+
+        var result = await _clientV2.CreateOrderAsync(new CreateOrderRequestV2
+        {
+            Ticker = "MARKET-ABC",
+            ClientOrderId = "client-v2",
+            Side = OrderBookSide.Bid,
+            Count = "10.00",
+            Price = "0.5600",
+            TimeInForce = EventOrderTimeInForce.GoodTillCanceled,
+            SelfTradePreventionType = SelfTradePreventionType.TakerAtCross,
+            ExchangeIndex = -1
+        });
+
+        result.OrderId.Should().Be("order-v2");
+        result.RemainingCount.Should().Be("10.00");
+        result.TsMs.Should().Be(1755600000123);
+    }
+
+    [Fact]
+    public async Task GetOrderAsync_CurrentPayload_ParsesFixedPointFields()
+    {
+        const string orderId = "order-current";
+        _server.Given(Request.Create()
+                .WithPath($"/trade-api/v2/portfolio/orders/{orderId}")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "order": {
+                        "order_id": "order-current",
+                        "ticker": "MARKET-ABC",
+                        "fill_count_fp": "1.50",
+                        "remaining_count_fp": "8.50",
+                        "initial_count_fp": "10.00",
+                        "yes_price_dollars": "0.5600",
+                        "subaccount_number": 2,
+                        "exchange_index": 1
+                    }
+                }
+                """));
+
+        var result = await _client.GetOrderAsync(orderId);
+
+        result.FillCountFp.Should().Be("1.50");
+        result.RemainingCountFp.Should().Be("8.50");
+        result.SubaccountNumber.Should().Be(2);
+        result.ExchangeIndex.Should().Be(1);
     }
 }

@@ -30,32 +30,32 @@ public sealed record OrderResponse
     /// <summary>
     /// Order side (Yes or No).
     /// </summary>
-    public required OrderSide Side { get; init; }
+    public OrderSide Side { get; init; }
 
     /// <summary>
     /// Whether this is a buy or sell action.
     /// </summary>
-    public required string Action { get; init; }
+    public string? Action { get; init; }
 
     /// <summary>
     /// Order type (Limit or Market).
     /// </summary>
-    public required OrderType Type { get; init; }
+    public OrderType Type { get; init; }
 
     /// <summary>
     /// Current status of the order.
     /// </summary>
-    public required OrderStatus Status { get; init; }
+    public OrderStatus Status { get; init; }
 
     /// <summary>
     /// Yes price in cents (1-99).
     /// </summary>
-    public required int YesPrice { get; init; }
+    public int YesPrice { get; init; }
 
     /// <summary>
     /// No price in cents (derived from yes price).
     /// </summary>
-    public required int NoPrice { get; init; }
+    public int NoPrice { get; init; }
 
     /// <summary>
     /// Yes price in dollars (string representation).
@@ -70,17 +70,26 @@ public sealed record OrderResponse
     /// <summary>
     /// Number of contracts filled.
     /// </summary>
-    public required int FillCount { get; init; }
+    public int FillCount { get; init; }
 
     /// <summary>
     /// Quantity remaining (not yet filled).
     /// </summary>
-    public required int RemainingCount { get; init; }
+    public int RemainingCount { get; init; }
 
     /// <summary>
     /// Initial quantity ordered.
     /// </summary>
-    public required int InitialCount { get; init; }
+    public int InitialCount { get; init; }
+
+    /// <summary>Number of contracts filled as a fixed-point count.</summary>
+    public string? FillCountFp { get; init; }
+
+    /// <summary>Remaining contracts as a fixed-point count.</summary>
+    public string? RemainingCountFp { get; init; }
+
+    /// <summary>Initial order quantity as a fixed-point count.</summary>
+    public string? InitialCountFp { get; init; }
 
     /// <summary>
     /// Taker fees in cents.
@@ -156,4 +165,19 @@ public sealed record OrderResponse
     /// Whether to cancel order when market is paused.
     /// </summary>
     public bool? CancelOrderOnPause { get; init; }
+
+    /// <summary>Canonical outcome side, when supplied.</summary>
+    public OrderSide? OutcomeSide { get; init; }
+
+    /// <summary>Canonical order-book side, when supplied.</summary>
+    public OrderBookSide? BookSide { get; init; }
+
+    /// <summary>Subaccount that owns this order.</summary>
+    public int? SubaccountNumber { get; init; }
+
+    /// <summary>Exchange shard that owns this order.</summary>
+    public int? ExchangeIndex { get; init; }
+
+    /// <summary>Matching-engine timestamp in Unix epoch milliseconds.</summary>
+    public long? TsMs { get; init; }
 }

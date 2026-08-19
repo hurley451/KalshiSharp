@@ -23,6 +23,7 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IMarketClient _markets;
     private readonly IEventClient _events;
     private readonly IOrderClient _orders;
+    private readonly IOrderClientV2? _ordersV2;
     private readonly IPortfolioClient _portfolio;
     private readonly IUserClient _users;
 
@@ -82,6 +83,7 @@ public sealed class KalshiClient : IKalshiClient
         _markets = new MarketClient(kalshiHttpClient);
         _events = new EventClient(kalshiHttpClient);
         _orders = new OrderClient(kalshiHttpClient);
+        _ordersV2 = new OrderClientV2(kalshiHttpClient);
         _portfolio = new PortfolioClient(kalshiHttpClient);
         _users = new UserClient(kalshiHttpClient);
     }
@@ -99,6 +101,7 @@ public sealed class KalshiClient : IKalshiClient
         _markets = new MarketClient(httpClient);
         _events = new EventClient(httpClient);
         _orders = new OrderClient(httpClient);
+        _ordersV2 = new OrderClientV2(httpClient);
         _portfolio = new PortfolioClient(httpClient);
         _users = new UserClient(httpClient);
     }
@@ -125,6 +128,7 @@ public sealed class KalshiClient : IKalshiClient
         _markets = markets ?? throw new ArgumentNullException(nameof(markets));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _orders = orders ?? throw new ArgumentNullException(nameof(orders));
+        _ordersV2 = null;
         _portfolio = portfolio ?? throw new ArgumentNullException(nameof(portfolio));
         _users = users ?? throw new ArgumentNullException(nameof(users));
     }
@@ -166,6 +170,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _orders;
+        }
+    }
+
+    /// <inheritdoc />
+    public IOrderClientV2? OrdersV2
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _ordersV2;
         }
     }
 

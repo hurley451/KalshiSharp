@@ -68,7 +68,7 @@ internal sealed class OrderClient : IOrderClient
     }
 
     /// <inheritdoc />
-    public Task<OrderResponse> GetOrderAsync(string orderId, CancellationToken cancellationToken = default)
+    public async Task<OrderResponse> GetOrderAsync(string orderId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
 
@@ -78,7 +78,8 @@ internal sealed class OrderClient : IOrderClient
             Path = $"{BasePath}/{Uri.EscapeDataString(orderId)}"
         };
 
-        return _httpClient.SendAsync<OrderResponse>(httpRequest, cancellationToken);
+        var response = await _httpClient.SendAsync<SingleOrderResponse>(httpRequest, cancellationToken).ConfigureAwait(false);
+        return response.Order;
     }
 
     /// <inheritdoc />
