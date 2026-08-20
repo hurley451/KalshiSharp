@@ -33,6 +33,12 @@ public sealed record FillUpdate : WebSocketMessage<FillUpdate.MessageBody>
             public required string MarketTicker { get; init; }
 
             /// <summary>
+            /// Exchange shard where the fill occurred.
+            /// </summary>
+            [JsonPropertyName("exchange_index")]
+            public int? ExchangeIndex { get; init; }
+
+            /// <summary>
             /// If you were a taker on this fill.
             /// </summary>
             [JsonPropertyName("is_taker")]
