@@ -501,6 +501,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
               "msg": {
                 "order_id": "order-current",
                 "ticker": "KXTEST-26AUG19",
+                "exchange_index": 2,
                 "is_yes": true,
                 "outcome_side": "yes",
                 "book_side": "bid",
@@ -553,6 +554,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             .Should().BeOfType<MarketPositionUpdate>().Subject;
 
         order.Message.RemainingCountFp.Should().Be("4.00");
+        order.Message.ExchangeIndex.Should().Be(2);
         order.Message.IsYes.Should().BeTrue();
         order.Message.TakerFillCostDollars.Should().Be("2.5950");
         order.Message.LastUpdatedTsMs.Should().Be(1787155200456);
