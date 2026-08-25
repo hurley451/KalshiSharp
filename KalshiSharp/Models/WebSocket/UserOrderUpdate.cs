@@ -21,6 +21,9 @@ public sealed record UserOrderUpdate : WebSocketMessage<UserOrderUpdate.MessageB
         /// <summary>Market ticker.</summary>
         public required string Ticker { get; init; }
 
+        /// <summary>Exchange shard where the order resides.</summary>
+        public int? ExchangeIndex { get; init; }
+
         /// <summary>Order status.</summary>
         public OrderStatus? Status { get; init; }
 
