@@ -207,6 +207,28 @@ var archived = await historical.ListMarketsAsync(new HistoricalMarketQuery
 });
 ```
 
+### Incentive Programs
+
+```csharp
+using KalshiSharp.Models.Enums;
+using KalshiSharp.Models.Requests;
+
+var incentives = client.Incentives
+    ?? throw new NotSupportedException("This client does not provide incentive-program access.");
+
+var programs = await incentives.ListIncentiveProgramsAsync(new IncentiveProgramQuery
+{
+    Status = IncentiveProgramStatus.Active,
+    Type = IncentiveProgramType.Liquidity,
+    Limit = 100
+});
+
+foreach (var program in programs.Items)
+{
+    Console.WriteLine($"{program.MarketTicker}: {program.TargetSizeFp} contracts");
+}
+```
+
 ### WebSocket Real-Time Updates
 
 ```csharp
