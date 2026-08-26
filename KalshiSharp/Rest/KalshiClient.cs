@@ -9,6 +9,7 @@ using KalshiSharp.Rest.Incentives;
 using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
+using KalshiSharp.Rest.Series;
 using KalshiSharp.Rest.Users;
 using KalshiSharp.Rest.Account;
 using KalshiSharp.RateLimiting;
@@ -32,6 +33,7 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IIncentiveClient? _incentives;
     private readonly IPortfolioClient _portfolio;
     private readonly IUserClient _users;
+    private readonly ISeriesClient? _series;
     private readonly IAccountClient? _account;
 
     // Resources we own and must dispose (only set when using direct instantiation)
@@ -106,6 +108,7 @@ public sealed class KalshiClient : IKalshiClient
         _incentives = new IncentiveClient(kalshiHttpClient);
         _portfolio = new PortfolioClient(kalshiHttpClient);
         _users = new UserClient(kalshiHttpClient);
+        _series = new SeriesClient(kalshiHttpClient);
         _account = new AccountClient(kalshiHttpClient);
     }
 
@@ -127,6 +130,7 @@ public sealed class KalshiClient : IKalshiClient
         _incentives = new IncentiveClient(httpClient);
         _portfolio = new PortfolioClient(httpClient);
         _users = new UserClient(httpClient);
+        _series = new SeriesClient(httpClient);
         _account = new AccountClient(httpClient);
     }
 
@@ -157,6 +161,7 @@ public sealed class KalshiClient : IKalshiClient
         _incentives = null;
         _portfolio = portfolio ?? throw new ArgumentNullException(nameof(portfolio));
         _users = users ?? throw new ArgumentNullException(nameof(users));
+        _series = null;
         _account = null;
     }
 
@@ -257,6 +262,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _users;
+        }
+    }
+
+    /// <inheritdoc />
+    public ISeriesClient? Series
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _series;
         }
     }
 
