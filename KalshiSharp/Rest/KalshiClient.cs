@@ -5,6 +5,7 @@ using KalshiSharp.Http;
 using KalshiSharp.Rest.Events;
 using KalshiSharp.Rest.Exchange;
 using KalshiSharp.Rest.Historical;
+using KalshiSharp.Rest.Incentives;
 using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
@@ -28,6 +29,7 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IOrderClient _orders;
     private readonly IOrderClientV2? _ordersV2;
     private readonly IHistoricalClient? _historical;
+    private readonly IIncentiveClient? _incentives;
     private readonly IPortfolioClient _portfolio;
     private readonly IUserClient _users;
     private readonly IAccountClient? _account;
@@ -101,6 +103,7 @@ public sealed class KalshiClient : IKalshiClient
         _orders = new OrderClient(kalshiHttpClient);
         _ordersV2 = new OrderClientV2(kalshiHttpClient);
         _historical = new HistoricalClient(kalshiHttpClient);
+        _incentives = new IncentiveClient(kalshiHttpClient);
         _portfolio = new PortfolioClient(kalshiHttpClient);
         _users = new UserClient(kalshiHttpClient);
         _account = new AccountClient(kalshiHttpClient);
@@ -121,6 +124,7 @@ public sealed class KalshiClient : IKalshiClient
         _orders = new OrderClient(httpClient);
         _ordersV2 = new OrderClientV2(httpClient);
         _historical = new HistoricalClient(httpClient);
+        _incentives = new IncentiveClient(httpClient);
         _portfolio = new PortfolioClient(httpClient);
         _users = new UserClient(httpClient);
         _account = new AccountClient(httpClient);
@@ -150,6 +154,7 @@ public sealed class KalshiClient : IKalshiClient
         _orders = orders ?? throw new ArgumentNullException(nameof(orders));
         _ordersV2 = null;
         _historical = null;
+        _incentives = null;
         _portfolio = portfolio ?? throw new ArgumentNullException(nameof(portfolio));
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _account = null;
@@ -222,6 +227,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _historical;
+        }
+    }
+
+    /// <inheritdoc />
+    public IIncentiveClient? Incentives
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _incentives;
         }
     }
 
