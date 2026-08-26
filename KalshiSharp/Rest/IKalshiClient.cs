@@ -4,6 +4,7 @@ using KalshiSharp.Rest.Historical;
 using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
+using KalshiSharp.Rest.Series;
 using KalshiSharp.Rest.Users;
 using KalshiSharp.Rest.Account;
 
@@ -55,4 +56,9 @@ public interface IKalshiClient : IDisposable
     /// Gets the users client for user profile endpoints.
     /// </summary>
     IUserClient Users { get; }
+
+    /// <summary>
+    /// Gets the series discovery client when the implementation supports it.
+    /// </summary>
+    ISeriesClient? Series => null;
 }

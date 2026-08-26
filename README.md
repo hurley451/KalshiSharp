@@ -116,6 +116,29 @@ foreach (var level in orderBook.OrderbookFp.YesDollars)
 }
 ```
 
+### Discover Series
+
+Series access is an optional client capability for discovering recurring contracts.
+
+```csharp
+using KalshiSharp.Models.Requests;
+
+var seriesClient = client.Series
+    ?? throw new NotSupportedException("This client does not provide series discovery.");
+
+var series = await seriesClient.ListSeriesAsync(new SeriesQuery
+{
+    Category = "Climate and Weather",
+    Tags = ["Daily temperature"],
+    IncludeVolume = true
+});
+
+foreach (var item in series.Items)
+{
+    Console.WriteLine($"{item.Ticker}: {item.Title}");
+}
+```
+
 ### Place and Cancel Orders
 
 ```csharp
