@@ -6,6 +6,13 @@ using KalshiSharp.Models.Enums;
 using KalshiSharp.Models.Requests;
 using KalshiSharp.Models.Responses;
 using KalshiSharp.Models.WebSocket;
+using KalshiSharp.Rest;
+using KalshiSharp.Rest.Events;
+using KalshiSharp.Rest.Exchange;
+using KalshiSharp.Rest.Markets;
+using KalshiSharp.Rest.Orders;
+using KalshiSharp.Rest.Portfolio;
+using KalshiSharp.Rest.Users;
 using KalshiSharp.Serialization;
 using Xunit;
 
@@ -13,6 +20,14 @@ namespace KalshiSharp.Tests.Compatibility;
 
 public sealed class PublishedApiCompatibilityTests
 {
+    [Fact]
+    public void LegacyRootClientImplementation_UsesDefaultForNewCapability()
+    {
+        IKalshiClient client = new LegacyRootClient();
+
+        client.Incentives.Should().BeNull();
+    }
+
     [Fact]
     public void RetiredIntegerOrderAndTradeMembers_AreNotPublished()
     {
@@ -147,5 +162,19 @@ public sealed class PublishedApiCompatibilityTests
         heartbeat.TimestampUtc.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1704067200000));
         update.IsYesSide.Should().BeTrue();
         trade.CreatedTime.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1704067200000));
+    }
+
+    private sealed class LegacyRootClient : IKalshiClient
+    {
+        public IExchangeClient Exchange => null!;
+        public IMarketClient Markets => null!;
+        public IEventClient Events => null!;
+        public IOrderClient Orders => null!;
+        public IPortfolioClient Portfolio => null!;
+        public IUserClient Users => null!;
+
+        public void Dispose()
+        {
+        }
     }
 }
