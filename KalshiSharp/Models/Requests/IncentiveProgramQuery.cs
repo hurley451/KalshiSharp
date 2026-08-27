@@ -49,6 +49,7 @@ public sealed record IncentiveProgramQuery : PaginationParameters
                 IncentiveProgramType.All => "all",
                 IncentiveProgramType.Liquidity => "liquidity",
                 IncentiveProgramType.Volume => "volume",
+                IncentiveProgramType.MarginMakerVolume => "margin_maker_volume",
                 _ => throw new ArgumentOutOfRangeException(nameof(Type), Type, "Unsupported incentive type.")
             });
         }

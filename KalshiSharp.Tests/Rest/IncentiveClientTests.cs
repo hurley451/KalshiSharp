@@ -2,6 +2,7 @@ using FluentAssertions;
 using System.Globalization;
 using KalshiSharp.Auth;
 using KalshiSharp.Configuration;
+using KalshiSharp.Errors;
 using KalshiSharp.Http;
 using KalshiSharp.Models.Enums;
 using KalshiSharp.Models.Requests;
@@ -154,6 +155,7 @@ public sealed class IncentiveClientTests : IDisposable
     [InlineData(IncentiveProgramType.All, "all")]
     [InlineData(IncentiveProgramType.Liquidity, "liquidity")]
     [InlineData(IncentiveProgramType.Volume, "volume")]
+    [InlineData(IncentiveProgramType.MarginMakerVolume, "margin_maker_volume")]
     public void ToQueryString_MapsEveryType(IncentiveProgramType type, string expected)
     {
         new IncentiveProgramQuery { Type = type }.ToQueryString()
@@ -178,5 +180,74 @@ public sealed class IncentiveClientTests : IDisposable
 
         act.Should().Throw<ArgumentOutOfRangeException>()
             .Which.ParamName.Should().Be("Limit");
+    }
+
+    [Fact]
+    public async Task ListIncentiveProgramsAsync_DeserializesMarginProgramWithoutEventFields()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/incentive_programs")
+                .WithParam("type", "margin_maker_volume")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "incentive_programs": [
+                        {
+                            "id": "margin-program-1",
+                            "incentive_type": "margin_maker_volume",
+                            "incentive_description": "margin maker volume",
+                            "start_date": "2026-08-27T04:00:00Z",
+                            "end_date": "2026-08-28T04:00:00Z",
+                            "period_reward": 500000,
+                            "paid_out": false,
+                            "max_reward_per_account": 125000
+                        }
+                    ]
+                }
+                """));
+
+        var result = await _client.ListIncentiveProgramsAsync(new IncentiveProgramQuery
+        {
+            Type = IncentiveProgramType.MarginMakerVolume
+        });
+
+        var program = result.Items.Should().ContainSingle().Which;
+        program.MarketId.Should().BeNull();
+        program.MarketTicker.Should().BeNull();
+        program.IncentiveType.Should().Be("margin_maker_volume");
+        program.MaxRewardPerAccount.Should().Be(125000);
+    }
+
+    [Fact]
+    public async Task ListIncentiveProgramsAsync_MissingCommonIdRemainsInvalid()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/incentive_programs")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "incentive_programs": [
+                        {
+                            "incentive_type": "margin_maker_volume",
+                            "incentive_description": "margin maker volume",
+                            "start_date": "2026-08-27T04:00:00Z",
+                            "end_date": "2026-08-28T04:00:00Z",
+                            "period_reward": 500000,
+                            "paid_out": false
+                        }
+                    ]
+                }
+                """));
+
+        var action = () => _client.ListIncentiveProgramsAsync();
+
+        await action.Should().ThrowAsync<KalshiException>()
+            .WithMessage("Failed to deserialize response:*");
     }
 }
