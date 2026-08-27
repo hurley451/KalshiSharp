@@ -905,6 +905,44 @@ public sealed class OrderClientTests : IDisposable
     }
 
     [Fact]
+    public async Task CancelAllOrdersV2Async_OmitsSubaccountByDefault()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders")
+                .UsingDelete())
+            .RespondWith(Response.Create().WithStatusCode(204));
+
+        var action = () => _clientV2.CancelAllOrdersAsync();
+
+        await action.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task CancelAllOrdersV2Async_AppliesSubaccountFilter()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders")
+                .WithParam("subaccount", "3")
+                .UsingDelete())
+            .RespondWith(Response.Create().WithStatusCode(204));
+
+        var action = () => _clientV2.CancelAllOrdersAsync(subaccount: 3);
+
+        await action.Should().NotThrowAsync();
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(64)]
+    public async Task CancelAllOrdersV2Async_RejectsInvalidSubaccounts(int subaccount)
+    {
+        var action = () => _clientV2.CancelAllOrdersAsync(subaccount);
+
+        await action.Should().ThrowAsync<ArgumentOutOfRangeException>()
+            .WithMessage("Subaccount must be between 0 and 63.*");
+    }
+
+    [Fact]
     public async Task GetOrderAsync_CurrentPayload_ParsesFixedPointFields()
     {
         const string orderId = "order-current";
