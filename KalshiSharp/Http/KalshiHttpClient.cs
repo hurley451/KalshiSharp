@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using KalshiSharp.Configuration;
 using KalshiSharp.Errors;
 using KalshiSharp.Observability;
@@ -63,6 +64,11 @@ public sealed partial class KalshiHttpClient : IKalshiHttpClient
         _httpClient.BaseAddress = effectiveUri;
         _httpClient.Timeout = options.Value.Timeout;
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        if (options.Value.PreferredLanguage is { } preferredLanguage)
+        {
+            _httpClient.DefaultRequestHeaders.AcceptLanguage.Add(ParsePreferredLanguage(preferredLanguage));
+        }
     }
 
     /// <inheritdoc />
@@ -186,6 +192,66 @@ public sealed partial class KalshiHttpClient : IKalshiHttpClient
         }
 
         return httpRequest;
+    }
+
+    private static StringWithQualityHeaderValue ParsePreferredLanguage(string preferredLanguage)
+    {
+        if (string.IsNullOrWhiteSpace(preferredLanguage)
+            || !string.Equals(preferredLanguage, preferredLanguage.Trim(), StringComparison.Ordinal)
+            || preferredLanguage is "*"
+            || preferredLanguage.Contains(',')
+            || preferredLanguage.Contains(';'))
+        {
+            throw new ArgumentException(
+                "PreferredLanguage must be one valid BCP 47 language tag, such as es, es-MX, or pt-BR.",
+                nameof(preferredLanguage));
+        }
+
+        var match = PreferredLanguagePattern().Match(preferredLanguage);
+        if (!match.Success
+            || HasDuplicateCaptures(match.Groups["variant"].Captures)
+            || HasDuplicateCaptures(match.Groups["singleton"].Captures))
+        {
+            throw new ArgumentException(
+                "PreferredLanguage must be one valid BCP 47 language tag, such as es, es-MX, or pt-BR.",
+                nameof(preferredLanguage));
+        }
+
+        return new StringWithQualityHeaderValue(preferredLanguage);
+    }
+
+    [GeneratedRegex(
+        """
+        \A(?:
+            (?:en-GB-oed|i-ami|i-bnn|i-default|i-enochian|i-hak|i-klingon|i-lux|i-mingo|i-navajo|i-pwn|i-tao|i-tay|i-tsu|sgn-BE-FR|sgn-BE-NL|sgn-CH-DE|art-lojban|cel-gaulish|no-bok|no-nyn|zh-guoyu|zh-hakka|zh-min|zh-min-nan|zh-xiang)
+            |
+            (?:
+                (?:[A-Za-z]{2,3}(?:-[A-Za-z]{3}){0,3}|[A-Za-z]{4}|[A-Za-z]{5,8})
+                (?:-[A-Za-z]{4})?
+                (?:-(?:[A-Za-z]{2}|[0-9]{3}))?
+                (?:-(?<variant>[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*
+                (?:-(?<singleton>[0-9A-WY-Za-wy-z])(?:-[A-Za-z0-9]{2,8})+)*
+                (?:-x(?:-[A-Za-z0-9]{1,8})+)?
+            )
+            |
+            x(?:-[A-Za-z0-9]{1,8})+
+        )\z
+        """,
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace)]
+    private static partial Regex PreferredLanguagePattern();
+
+    private static bool HasDuplicateCaptures(CaptureCollection captures)
+    {
+        var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Capture capture in captures)
+        {
+            if (!values.Add(capture.Value))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void HandleErrorResponse(HttpResponseMessage response, string? content, string requestId)

@@ -66,6 +66,23 @@ public class MyService(IKalshiClient client)
 }
 ```
 
+### Localized Market Responses
+
+Kalshi can return localized market text and rules when a preferred language is configured.
+Use one BCP 47 language tag. Spanish and Portuguese, including regional variants such as
+`es-MX` and `pt-BR`, are currently documented. Valid but unsupported tags, or an omitted
+value, fall back to English.
+
+```csharp
+using var client = new KalshiClient(new KalshiClientOptions
+{
+    ApiKey = "your-api-key",
+    ApiSecret = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----",
+    Environment = KalshiEnvironment.Production,
+    PreferredLanguage = "es-MX"
+});
+```
+
 ### Get Exchange Schedule
 
 ```csharp
