@@ -8,11 +8,11 @@ public sealed record IncentiveProgramResponse
     /// <summary>Gets the unique incentive-program identifier.</summary>
     public required string Id { get; init; }
 
-    /// <summary>Gets the unique identifier of the associated market.</summary>
-    public required string MarketId { get; init; }
+    /// <summary>Gets the unique identifier of the associated event market, when applicable.</summary>
+    public string? MarketId { get; init; }
 
-    /// <summary>Gets the ticker of the associated market.</summary>
-    public required string MarketTicker { get; init; }
+    /// <summary>Gets the ticker of the associated event market, when applicable.</summary>
+    public string? MarketTicker { get; init; }
 
     /// <summary>Gets the associated series ticker when supplied.</summary>
     public string? SeriesTicker { get; init; }
@@ -40,4 +40,7 @@ public sealed record IncentiveProgramResponse
 
     /// <summary>Gets the optional fixed-point target size.</summary>
     public string? TargetSizeFp { get; init; }
+
+    /// <summary>Gets the optional maximum reward per account in centi-cents.</summary>
+    public long? MaxRewardPerAccount { get; init; }
 }

@@ -12,5 +12,8 @@ public enum IncentiveProgramType
     Liquidity,
 
     /// <summary>Return volume incentive programs.</summary>
-    Volume
+    Volume,
+
+    /// <summary>Return Margin maker-volume incentive programs.</summary>
+    MarginMakerVolume
 }
