@@ -163,4 +163,29 @@ internal sealed class OrderClientV2 : IOrderClientV2
 
         return _httpClient.SendAsync<BatchCancelOrdersResponseV2>(httpRequest, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public Task CancelAllOrdersAsync(
+        int? subaccount = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (subaccount is < 0 or > 63)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(subaccount),
+                subaccount,
+                "Subaccount must be between 0 and 63.");
+        }
+
+        var builder = new QueryStringBuilder();
+        builder.AppendIfNotNull("subaccount", subaccount);
+
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Delete,
+            Path = $"{BasePath}{builder.Build()}"
+        };
+
+        return _httpClient.SendAsync(httpRequest, cancellationToken);
+    }
 }

@@ -164,6 +164,16 @@ public sealed class PublishedApiCompatibilityTests
         trade.CreatedTime.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1704067200000));
     }
 
+    [Fact]
+    public async Task LegacyV2OrderClient_DefaultsNewCancelAllCapability()
+    {
+        IOrderClientV2 client = new LegacyV2OrderClient();
+
+        var action = () => client.CancelAllOrdersAsync();
+
+        await action.Should().ThrowAsync<NotSupportedException>();
+    }
+
     private sealed class LegacyRootClient : IKalshiClient
     {
         public IExchangeClient Exchange => null!;
@@ -176,5 +186,26 @@ public sealed class PublishedApiCompatibilityTests
         public void Dispose()
         {
         }
+    }
+
+    private sealed class LegacyV2OrderClient : IOrderClientV2
+    {
+        public Task<CreateOrderResponseV2> CreateOrderAsync(
+            CreateOrderRequestV2 request,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<CancelOrderResponseV2> CancelOrderAsync(
+            string orderId,
+            CancelOrderQueryV2? query = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<AmendOrderResponseV2> AmendOrderAsync(
+            string orderId,
+            AmendOrderRequestV2 request,
+            int? subaccount = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

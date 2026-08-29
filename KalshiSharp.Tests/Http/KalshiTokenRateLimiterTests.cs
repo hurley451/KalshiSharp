@@ -115,4 +115,23 @@ public sealed class KalshiTokenRateLimiterTests
         result.IsWrite.Should().BeFalse();
         result.TokenCost.Should().Be(17);
     }
+
+    [Fact]
+    public async Task ClassifyAsync_CancelAllOrdersUsesTierMaximumWriteCost()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Delete,
+            "https://example.test/trade-api/v2/portfolio/events/orders?subaccount=3");
+
+        var result = await RateLimitingDelegatingHandler.ClassifyAsync(
+            request,
+            defaultTokenCost: 10,
+            maximumWriteTokenCost: 300,
+            cancellationToken: default);
+
+        result.IsWrite.Should().BeTrue();
+        result.IsBatch.Should().BeTrue();
+        result.ExchangeIndex.Should().BeNull();
+        result.TokenCost.Should().Be(300);
+    }
 }
