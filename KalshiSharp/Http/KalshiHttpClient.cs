@@ -198,6 +198,7 @@ public sealed partial class KalshiHttpClient : IKalshiHttpClient
     {
         if (string.IsNullOrWhiteSpace(preferredLanguage)
             || !string.Equals(preferredLanguage, preferredLanguage.Trim(), StringComparison.Ordinal)
+            || preferredLanguage.Any(static character => !char.IsAscii(character))
             || preferredLanguage is "*"
             || preferredLanguage.Contains(',')
             || preferredLanguage.Contains(';'))

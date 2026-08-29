@@ -89,6 +89,7 @@ public sealed class PreferredLanguageTests : IDisposable
     [InlineData("es\r\nX-Test: injected")]
     [InlineData("en-1901-1901")]
     [InlineData("en-a-foo-a-bar")]
+    [InlineData("Kk")]
     public void InvalidLanguage_FailsDuringClientConfiguration(string preferredLanguage)
     {
         using var httpClient = CreateHttpClient();
