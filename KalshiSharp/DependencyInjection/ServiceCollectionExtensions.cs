@@ -55,7 +55,8 @@ public static class ServiceCollectionExtensions
                 rateLimiter,
                 logger,
                 options.Value.EnableRateLimiting,
-                options.Value.RateLimits.DefaultTokenCost);
+                options.Value.RateLimits.DefaultTokenCost,
+                options.Value.RateLimits.WriteTokensPerSecond);
         });
 
         // Configure HttpClient with resilience pipeline

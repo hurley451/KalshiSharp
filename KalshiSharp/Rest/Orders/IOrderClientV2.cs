@@ -54,4 +54,17 @@ public interface IOrderClientV2
             BatchCancelOrdersRequestV2 request,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("This V2 order client does not support batch order cancellation.");
+
+        /// <summary>
+        /// Cancels up to 10,000 resting event orders across every exchange shard.
+        /// </summary>
+        /// <param name="subaccount">
+        /// Optional subaccount filter (0 for primary, 1-63 for subaccounts).
+        /// Omit to select matching orders from any subaccount.
+        /// </param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task CancelAllOrdersAsync(
+            int? subaccount = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("This V2 order client does not support account-wide order cancellation.");
 }

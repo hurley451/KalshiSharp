@@ -78,7 +78,8 @@ public sealed class KalshiClient : IKalshiClient
             _ownedRateLimiter,
             NullLogger<RateLimitingDelegatingHandler>.Instance,
             options.EnableRateLimiting,
-            options.RateLimits.DefaultTokenCost)
+            options.RateLimits.DefaultTokenCost,
+            options.RateLimits.WriteTokensPerSecond)
         {
             InnerHandler = signingHandler
         };
