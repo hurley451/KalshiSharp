@@ -169,6 +169,13 @@ var cancelled = await ordersV2.CancelOrderAsync(order.OrderId, new CancelOrderQu
     ExchangeIndex = -1,
     MarketTicker = request.Ticker
 });
+
+// Explicitly cancel up to 10,000 resting event orders across every shard and subaccount.
+// If more than 10,000 match, Kalshi selects the cancelled orders arbitrarily.
+await ordersV2.CancelAllOrdersAsync();
+
+// Restrict the same operation to one subaccount.
+await ordersV2.CancelAllOrdersAsync(subaccount: 2);
 ```
 
 ### Portfolio Information

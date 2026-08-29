@@ -13,6 +13,7 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
     private readonly ILogger<RateLimitingDelegatingHandler> _logger;
     private readonly bool _enabled;
     private readonly int _defaultTokenCost;
+    private readonly int _maximumWriteTokenCost;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RateLimitingDelegatingHandler"/> class.
@@ -24,7 +25,7 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
         IRateLimiter rateLimiter,
         ILogger<RateLimitingDelegatingHandler> logger,
         bool enabled = true)
-        : this(rateLimiter, logger, enabled, 10)
+        : this(rateLimiter, logger, enabled, 10, 100)
     {
     }
 
@@ -38,12 +39,30 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
         ILogger<RateLimitingDelegatingHandler> logger,
         bool enabled,
         int defaultTokenCost)
+        : this(rateLimiter, logger, enabled, defaultTokenCost, 100)
+    {
+    }
+
+    /// <summary>Initializes a handler with explicit fallback and tier-maximum write costs.</summary>
+    /// <param name="rateLimiter">The rate limiter.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="enabled">Whether rate limiting is enabled.</param>
+    /// <param name="defaultTokenCost">Fallback token cost for unclassified endpoints.</param>
+    /// <param name="maximumWriteTokenCost">Cost of a request billed at the caller tier's full write budget.</param>
+    public RateLimitingDelegatingHandler(
+        IRateLimiter rateLimiter,
+        ILogger<RateLimitingDelegatingHandler> logger,
+        bool enabled,
+        int defaultTokenCost,
+        int maximumWriteTokenCost)
     {
         _rateLimiter = rateLimiter ?? throw new ArgumentNullException(nameof(rateLimiter));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _enabled = enabled;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(defaultTokenCost);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumWriteTokenCost);
         _defaultTokenCost = defaultTokenCost;
+        _maximumWriteTokenCost = maximumWriteTokenCost;
     }
 
     /// <inheritdoc />
@@ -60,7 +79,11 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
                 LogThrottling();
             }
 
-            var classification = await ClassifyAsync(request, _defaultTokenCost, cancellationToken).ConfigureAwait(false);
+            var classification = await ClassifyAsync(
+                request,
+                _defaultTokenCost,
+                _maximumWriteTokenCost,
+                cancellationToken).ConfigureAwait(false);
             await _rateLimiter.WaitAsync(classification, cancellationToken).ConfigureAwait(false);
         }
 
@@ -73,6 +96,13 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
     internal static async ValueTask<RateLimitRequest> ClassifyAsync(
         HttpRequestMessage request,
         int defaultTokenCost,
+        CancellationToken cancellationToken) =>
+        await ClassifyAsync(request, defaultTokenCost, 100, cancellationToken).ConfigureAwait(false);
+
+    internal static async ValueTask<RateLimitRequest> ClassifyAsync(
+        HttpRequestMessage request,
+        int defaultTokenCost,
+        int maximumWriteTokenCost,
         CancellationToken cancellationToken)
     {
         var isWrite = request.Method != HttpMethod.Get && request.Method != HttpMethod.Head;
@@ -87,6 +117,21 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
         var isBatch = path.EndsWith("/batched", StringComparison.OrdinalIgnoreCase);
         var isV2Order = path.Contains("/portfolio/events/orders", StringComparison.OrdinalIgnoreCase);
         var isLegacyOrder = !isV2Order && path.Contains("/portfolio/orders", StringComparison.OrdinalIgnoreCase);
+        var isCancelAllOrders = request.Method == HttpMethod.Delete &&
+            path.TrimEnd('/').Equals(
+                "/trade-api/v2/portfolio/events/orders",
+                StringComparison.OrdinalIgnoreCase);
+
+        if (isCancelAllOrders)
+        {
+            return new RateLimitRequest
+            {
+                IsWrite = true,
+                TokenCost = maximumWriteTokenCost,
+                IsBatch = true
+            };
+        }
+
         var itemCount = 1;
         int? exchangeIndex = ParseQueryExchangeIndex(request.RequestUri);
 
