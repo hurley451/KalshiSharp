@@ -172,6 +172,7 @@ var cancelled = await ordersV2.CancelOrderAsync(order.OrderId, new CancelOrderQu
 
 // Explicitly cancel up to 10,000 resting event orders across every shard and subaccount.
 // If more than 10,000 match, Kalshi selects the cancelled orders arbitrarily.
+// Newly placed matching orders may also be cancelled during the minute after this request.
 await ordersV2.CancelAllOrdersAsync();
 
 // Restrict the same operation to one subaccount.

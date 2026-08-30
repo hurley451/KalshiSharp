@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentAssertions;
 using KalshiSharp.Auth;
 using KalshiSharp.Tests.Auth;
@@ -909,12 +910,19 @@ public sealed class OrderClientTests : IDisposable
     {
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/portfolio/events/orders")
+                .WithBody(body => string.IsNullOrEmpty(body))
                 .UsingDelete())
             .RespondWith(Response.Create().WithStatusCode(204));
 
         var action = () => _clientV2.CancelAllOrdersAsync();
 
         await action.Should().NotThrowAsync();
+
+        var requestMessage = _server.LogEntries.Should().ContainSingle().Which.RequestMessage;
+        requestMessage.Should().NotBeNull();
+        var request = requestMessage!;
+        request.RawQuery.Should().BeNullOrEmpty();
+        request.Body.Should().BeNullOrEmpty();
     }
 
     [Fact]
@@ -923,10 +931,28 @@ public sealed class OrderClientTests : IDisposable
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/portfolio/events/orders")
                 .WithParam("subaccount", "3")
+                .WithBody(body => string.IsNullOrEmpty(body))
                 .UsingDelete())
             .RespondWith(Response.Create().WithStatusCode(204));
 
         var action = () => _clientV2.CancelAllOrdersAsync(subaccount: 3);
+
+        await action.Should().NotThrowAsync();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(63)]
+    public async Task CancelAllOrdersV2Async_AcceptsBoundarySubaccounts(int subaccount)
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders")
+                .WithParam("subaccount", subaccount.ToString(CultureInfo.InvariantCulture))
+                .WithBody(body => string.IsNullOrEmpty(body))
+                .UsingDelete())
+            .RespondWith(Response.Create().WithStatusCode(204));
+
+        var action = () => _clientV2.CancelAllOrdersAsync(subaccount);
 
         await action.Should().NotThrowAsync();
     }
