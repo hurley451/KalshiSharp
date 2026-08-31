@@ -1,4 +1,5 @@
 using KalshiSharp.Rest.Events;
+using KalshiSharp.Rest.CfBenchmarks;
 using KalshiSharp.Rest.Exchange;
 using KalshiSharp.Rest.Historical;
 using KalshiSharp.Rest.Incentives;
@@ -16,6 +17,9 @@ namespace KalshiSharp.Rest;
 /// </summary>
 public interface IKalshiClient : IDisposable
 {
+    /// <summary>Gets the CF Benchmarks passthrough client when supported.</summary>
+    ICfBenchmarksClient? CfBenchmarks => null;
+
     /// <summary>Gets account usage and rate-limit discovery when supported.</summary>
     IAccountClient? Account => null;
     /// <summary>

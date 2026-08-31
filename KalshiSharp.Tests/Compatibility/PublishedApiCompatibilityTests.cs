@@ -26,6 +26,7 @@ public sealed class PublishedApiCompatibilityTests
         IKalshiClient client = new LegacyRootClient();
 
         client.Incentives.Should().BeNull();
+        client.CfBenchmarks.Should().BeNull();
     }
 
     [Fact]

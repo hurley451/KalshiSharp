@@ -23,9 +23,9 @@ public abstract record WebSocketSubscription
     /// Creates a subscription message for sending to the WebSocket server.
     /// </summary>
     /// <returns>The subscription command object.</returns>
-    internal SubscriptionCommand ToSubscribeCommand() => new()
+    internal SubscriptionCommand ToSubscribeCommand(int commandId) => new()
     {
-        Id = 1,
+        Id = commandId,
         Command = "subscribe",
         Params = CreateSubscribeParams()
     };
@@ -41,9 +41,9 @@ public abstract record WebSocketSubscription
     /// Creates an unsubscription message for sending to the WebSocket server.
     /// </summary>
     /// <returns>The unsubscription command object.</returns>
-    internal SubscriptionCommand ToUnsubscribeCommand() => new()
+    internal SubscriptionCommand ToUnsubscribeCommand(int commandId) => new()
     {
-        Id = 2,
+        Id = commandId,
         Command = "unsubscribe",
         Params = new SubscriptionParams
         {
@@ -53,9 +53,9 @@ public abstract record WebSocketSubscription
     };
 
     /// <summary>Creates an unsubscription command for a server-assigned subscription.</summary>
-    internal static SubscriptionCommand ToUnsubscribeCommand(int subscriptionId) => new()
+    internal static SubscriptionCommand ToUnsubscribeCommand(int commandId, int subscriptionId) => new()
     {
-        Id = 2,
+        Id = commandId,
         Command = "unsubscribe",
         Params = new SubscriptionParams
         {
@@ -65,17 +65,47 @@ public abstract record WebSocketSubscription
 
     /// <summary>Creates an update command for an existing subscription.</summary>
     internal static SubscriptionCommand ToUpdateCommand(
+        int commandId,
         int subscriptionId,
         SubscriptionUpdateAction action,
         IReadOnlyList<string> marketTickers) => new()
         {
-            Id = 3,
+            Id = commandId,
             Command = "update_subscription",
             Params = new SubscriptionParams
             {
                 SubscriptionIds = [subscriptionId],
-                Action = action,
+                Action = action switch
+                {
+                    SubscriptionUpdateAction.AddMarkets => "add_markets",
+                    SubscriptionUpdateAction.DeleteMarkets => "delete_markets",
+                    SubscriptionUpdateAction.GetSnapshot => "get_snapshot",
+                    _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
+                },
                 MarketTickers = marketTickers
+            }
+        };
+
+    /// <summary>Creates a CF Benchmarks update command for an existing subscription.</summary>
+    internal static SubscriptionCommand ToCfBenchmarksUpdateCommand(
+        int commandId,
+        int subscriptionId,
+        CfBenchmarksSubscriptionUpdateAction action,
+        IReadOnlyList<string>? indexIds) => new()
+        {
+            Id = commandId,
+            Command = "update_subscription",
+            Params = new SubscriptionParams
+            {
+                SubscriptionIds = [subscriptionId],
+                Action = action switch
+                {
+                    CfBenchmarksSubscriptionUpdateAction.SubscribeIndices => "subscribe_indices",
+                    CfBenchmarksSubscriptionUpdateAction.UnsubscribeIndices => "unsubscribe_indices",
+                    CfBenchmarksSubscriptionUpdateAction.IndexList => "indexlist",
+                    _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
+                },
+                IndexIds = indexIds
             }
         };
 }
@@ -137,5 +167,10 @@ internal sealed record SubscriptionParams
     /// <summary>Update action.</summary>
     [JsonPropertyName("action")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public SubscriptionUpdateAction? Action { get; init; }
+    public string? Action { get; init; }
+
+    /// <summary>CF Benchmarks index identifiers.</summary>
+    [JsonPropertyName("index_ids")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? IndexIds { get; init; }
 }

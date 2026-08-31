@@ -36,7 +36,10 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
     private readonly ILogger<KalshiWebSocketClient> _logger;
 
     private readonly Channel<WebSocketMessage> _messageChannel;
-    private readonly HashSet<WebSocketSubscription> _activeSubscriptions = [];
+    private readonly List<ActiveSubscriptionState> _activeSubscriptions = [];
+    private readonly Dictionary<int, ActiveSubscriptionState> _pendingSubscriptions = [];
+    private readonly Dictionary<int, PendingCfUpdate> _pendingCfUpdates = [];
+    private readonly Dictionary<int, ActiveSubscriptionState> _subscriptionsByServerId = [];
     private readonly object _subscriptionLock = new();
     private readonly SemaphoreSlim _sendLock = new(1, 1);
 
@@ -47,6 +50,8 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
     private Task? _receiveTask;
     private bool _disposed;
     private int _reconnectAttempt;
+    private int _nextCommandId;
+    private long _nextCfUpdateSequence;
     private bool _autoReconnect = true;
 
     /// <summary>
@@ -130,6 +135,8 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
 
         try
         {
+            ResetSessionCommandIds();
+
             // Generate auth headers for WebSocket handshake
             var headers = GenerateAuthHeaders(uri);
 
@@ -209,15 +216,30 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
 
         using var activity = StartSubscribeActivity(subscription.Channel);
 
-        var command = subscription.ToSubscribeCommand();
+        var commandId = AllocateCommandId();
+        var command = subscription.ToSubscribeCommand(commandId);
         var json = JsonSerializer.Serialize(command, KalshiJsonOptions.Default);
         var bytes = Encoding.UTF8.GetBytes(json);
 
-        await SendAsync(bytes, cancellationToken).ConfigureAwait(false);
-
+        var state = new ActiveSubscriptionState(subscription);
         lock (_subscriptionLock)
         {
-            _activeSubscriptions.Add(subscription);
+            _activeSubscriptions.Add(state);
+            _pendingSubscriptions[commandId] = state;
+        }
+
+        try
+        {
+            await SendAsync(bytes, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            lock (_subscriptionLock)
+            {
+                RemoveSubscriptionState(state);
+            }
+
+            throw;
         }
 
         LogSubscribed(subscription.Channel, subscription.Markets.Count);
@@ -231,7 +253,14 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
         ArgumentNullException.ThrowIfNull(subscription);
         EnsureAuthenticated();
 
-        var command = subscription.ToUnsubscribeCommand();
+        if (subscription is CfBenchmarksValueSubscription)
+        {
+            throw new ArgumentException(
+                "CF Benchmarks subscriptions must be unsubscribed with their server-assigned subscription ID.",
+                nameof(subscription));
+        }
+
+        var command = subscription.ToUnsubscribeCommand(AllocateCommandId());
         var json = JsonSerializer.Serialize(command, KalshiJsonOptions.Default);
         var bytes = Encoding.UTF8.GetBytes(json);
 
@@ -239,7 +268,12 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
 
         lock (_subscriptionLock)
         {
-            _activeSubscriptions.Remove(subscription);
+            foreach (var state in _activeSubscriptions
+                         .Where(state => state.Subscription.Equals(subscription))
+                         .ToArray())
+            {
+                RemoveSubscriptionState(state);
+            }
         }
 
         LogUnsubscribed(subscription.Channel);
@@ -252,9 +286,17 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(subscriptionId);
         EnsureAuthenticated();
 
-        var command = WebSocketSubscription.ToUnsubscribeCommand(subscriptionId);
+        var command = WebSocketSubscription.ToUnsubscribeCommand(AllocateCommandId(), subscriptionId);
         var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(command, KalshiJsonOptions.Default));
         await SendAsync(bytes, cancellationToken).ConfigureAwait(false);
+
+        lock (_subscriptionLock)
+        {
+            if (_subscriptionsByServerId.TryGetValue(subscriptionId, out var state))
+            {
+                RemoveSubscriptionState(state);
+            }
+        }
     }
 
     /// <inheritdoc />
@@ -275,9 +317,65 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
             throw new ArgumentException("Market tickers are required for add and delete actions.", nameof(marketTickers));
         }
 
-        var command = WebSocketSubscription.ToUpdateCommand(subscriptionId, action, tickers);
+        var command = WebSocketSubscription.ToUpdateCommand(
+            AllocateCommandId(),
+            subscriptionId,
+            action,
+            tickers);
         var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(command, KalshiJsonOptions.Default));
         await SendAsync(bytes, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> UpdateCfBenchmarksSubscriptionAsync(
+        int subscriptionId,
+        CfBenchmarksSubscriptionUpdateAction action,
+        IReadOnlyList<string>? indexIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(subscriptionId);
+        EnsureAuthenticated();
+
+        var ids = indexIds?.ToArray();
+        if (action == CfBenchmarksSubscriptionUpdateAction.IndexList)
+        {
+            if (ids is { Length: > 0 })
+            {
+                throw new ArgumentException("Index-list requests cannot include index identifiers.", nameof(indexIds));
+            }
+
+            ids = null;
+        }
+        else
+        {
+            CfBenchmarksValueSubscription.ValidateIndexIds(ids ?? [], allowEmpty: false);
+        }
+
+        ActiveSubscriptionState state;
+        lock (_subscriptionLock)
+        {
+            if (!_subscriptionsByServerId.TryGetValue(subscriptionId, out state!) ||
+                state.Subscription is not CfBenchmarksValueSubscription)
+            {
+                throw new ArgumentException(
+                    "The subscription ID does not identify an active CF Benchmarks subscription.",
+                    nameof(subscriptionId));
+            }
+        }
+
+        var replayUpdate = action == CfBenchmarksSubscriptionUpdateAction.IndexList
+            ? null
+            : new CfBenchmarksReplayUpdate(action, ids!);
+        var commandId = await SendCfBenchmarksUpdateAsync(
+            subscriptionId,
+            action,
+            ids,
+            state,
+            replayUpdate,
+            cancellationToken).ConfigureAwait(false);
+
+        return commandId;
     }
 
     /// <inheritdoc />
@@ -380,6 +478,19 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
             var message = ParseMessage(json);
             if (message is not null)
             {
+                if (message is SubscriptionConfirmation confirmation)
+                {
+                    await HandleSubscriptionConfirmationAsync(confirmation).ConfigureAwait(false);
+                }
+                else if (message is OKMessage acknowledgement)
+                {
+                    HandleCfUpdateResult(acknowledgement.Id, succeeded: true);
+                }
+                else if (message is ErrorMessageV2 error)
+                {
+                    HandleCfUpdateResult(error.Id, succeeded: false);
+                }
+
                 await _messageChannel.Writer.WriteAsync(message).ConfigureAwait(false);
             }
         }
@@ -426,6 +537,10 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
     private async Task HandleDisconnectAsync(CancellationToken cancellationToken)
     {
         _connection.Reset();
+        lock (_subscriptionLock)
+        {
+            _pendingCfUpdates.Clear();
+        }
 
         if (!_autoReconnect || _disposed)
         {
@@ -464,28 +579,51 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
         var uri = GetWebSocketUri();
         var headers = GenerateAuthHeaders(uri);
 
+        ResetSessionCommandIds();
         await _connection.ConnectAsync(uri, headers, cancellationToken).ConfigureAwait(false);
-        _connection.MarkAuthenticated();
 
         // Re-subscribe to all active subscriptions
-        WebSocketSubscription[] subscriptions;
+        SubscriptionCommand[] commands;
         lock (_subscriptionLock)
         {
-            subscriptions = [.. _activeSubscriptions];
+            _pendingSubscriptions.Clear();
+            _pendingCfUpdates.Clear();
+            _subscriptionsByServerId.Clear();
+
+            commands = new SubscriptionCommand[_activeSubscriptions.Count];
+            for (var index = 0; index < _activeSubscriptions.Count; index++)
+            {
+                var state = _activeSubscriptions[index];
+                state.ServerId = null;
+                state.ReplayCfUpdatesOnConfirmation = state.CfUpdates.Count > 0;
+
+                var commandId = AllocateCommandId();
+                commands[index] = state.Subscription.ToSubscribeCommand(commandId);
+                _pendingSubscriptions[commandId] = state;
+            }
         }
 
-        foreach (var subscription in subscriptions)
+        foreach (var command in commands)
         {
-            var command = subscription.ToSubscribeCommand();
             var json = JsonSerializer.Serialize(command, KalshiJsonOptions.Default);
             var bytes = Encoding.UTF8.GetBytes(json);
             await SendAsync(bytes, cancellationToken).ConfigureAwait(false);
         }
 
+        // Keep the session unavailable to callers until replay command IDs are allocated and sent.
+        _connection.MarkAuthenticated();
+
         _reconnectAttempt = 0;
         _reconnectPolicy.Reset();
 
-        LogReconnected(subscriptions.Length);
+        if (_receiveCts is { IsCancellationRequested: false } receiveCancellation)
+        {
+            _receiveTask = Task.Run(
+                () => ReceiveLoopAsync(receiveCancellation.Token),
+                receiveCancellation.Token);
+        }
+
+        LogReconnected(commands.Length);
     }
 
     /// <summary>
@@ -551,8 +689,182 @@ public sealed partial class KalshiWebSocketClient : IKalshiWebSocketClient
         lock (_subscriptionLock)
         {
             _activeSubscriptions.Clear();
+            _pendingSubscriptions.Clear();
+            _pendingCfUpdates.Clear();
+            _subscriptionsByServerId.Clear();
         }
     }
+
+    private async Task<int> SendCfBenchmarksUpdateAsync(
+        int subscriptionId,
+        CfBenchmarksSubscriptionUpdateAction action,
+        IReadOnlyList<string>? indexIds,
+        ActiveSubscriptionState? state,
+        CfBenchmarksReplayUpdate? replayUpdate,
+        CancellationToken cancellationToken)
+    {
+        var commandId = AllocateCommandId();
+        var command = WebSocketSubscription.ToCfBenchmarksUpdateCommand(
+            commandId,
+            subscriptionId,
+            action,
+            indexIds);
+        var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(command, KalshiJsonOptions.Default));
+
+        await _sendLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (state is not null && replayUpdate is not null)
+            {
+                var updateSequence = Interlocked.Increment(ref _nextCfUpdateSequence);
+                lock (_subscriptionLock)
+                {
+                    _pendingCfUpdates[commandId] = new PendingCfUpdate(
+                        state,
+                        replayUpdate,
+                        updateSequence);
+                }
+            }
+
+            await _connection.SendAsync(bytes, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            lock (_subscriptionLock)
+            {
+                _pendingCfUpdates.Remove(commandId);
+            }
+
+            throw;
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
+
+        return commandId;
+    }
+
+    private async Task HandleSubscriptionConfirmationAsync(SubscriptionConfirmation confirmation)
+    {
+        CfBenchmarksReplayUpdate[] updates = [];
+        var subscriptionId = confirmation.Message.Sid;
+        if (subscriptionId <= 0)
+        {
+            return;
+        }
+
+        lock (_subscriptionLock)
+        {
+            if (!_pendingSubscriptions.Remove(confirmation.Id, out var state))
+            {
+                return;
+            }
+
+            state.ServerId = subscriptionId;
+            _subscriptionsByServerId[subscriptionId] = state;
+
+            if (state.ReplayCfUpdatesOnConfirmation &&
+                state.Subscription is CfBenchmarksValueSubscription)
+            {
+                updates = state.CfUpdates
+                    .OrderBy(update => update.Sequence)
+                    .Select(update => update.Update)
+                    .ToArray();
+                state.ReplayCfUpdatesOnConfirmation = false;
+            }
+        }
+
+        foreach (var update in updates)
+        {
+            await SendCfBenchmarksUpdateAsync(
+                subscriptionId,
+                update.Action,
+                update.IndexIds,
+                state: null,
+                replayUpdate: null,
+                cancellationToken: CancellationToken.None).ConfigureAwait(false);
+        }
+    }
+
+    private void HandleCfUpdateResult(int commandId, bool succeeded)
+    {
+        lock (_subscriptionLock)
+        {
+            if (!_pendingCfUpdates.Remove(commandId, out var pending) ||
+                !succeeded ||
+                !_activeSubscriptions.Contains(pending.State))
+            {
+                return;
+            }
+
+            pending.State.CfUpdates.Add(new ConfirmedCfUpdate(pending.Sequence, pending.Update));
+        }
+    }
+
+    private int AllocateCommandId()
+    {
+        var commandId = Interlocked.Increment(ref _nextCommandId);
+        return commandId > 0
+            ? commandId
+            : throw new InvalidOperationException("The WebSocket command identifier range is exhausted.");
+    }
+
+    private void ResetSessionCommandIds() => Interlocked.Exchange(ref _nextCommandId, 0);
+
+    private void RemoveSubscriptionState(ActiveSubscriptionState state)
+    {
+        _activeSubscriptions.Remove(state);
+
+        foreach (var commandId in _pendingSubscriptions
+                     .Where(pair => ReferenceEquals(pair.Value, state))
+                     .Select(pair => pair.Key)
+                     .ToArray())
+        {
+            _pendingSubscriptions.Remove(commandId);
+        }
+
+        foreach (var commandId in _pendingCfUpdates
+                     .Where(pair => ReferenceEquals(pair.Value.State, state))
+                     .Select(pair => pair.Key)
+                     .ToArray())
+        {
+            _pendingCfUpdates.Remove(commandId);
+        }
+
+        if (state.ServerId is { } serverId &&
+            _subscriptionsByServerId.TryGetValue(serverId, out var mapped) &&
+            ReferenceEquals(mapped, state))
+        {
+            _subscriptionsByServerId.Remove(serverId);
+        }
+
+        state.ServerId = null;
+    }
+
+    private sealed class ActiveSubscriptionState(WebSocketSubscription subscription)
+    {
+        public WebSocketSubscription Subscription { get; } = subscription;
+
+        public int? ServerId { get; set; }
+
+        public bool ReplayCfUpdatesOnConfirmation { get; set; }
+
+        public List<ConfirmedCfUpdate> CfUpdates { get; } = [];
+    }
+
+    private sealed record CfBenchmarksReplayUpdate(
+        CfBenchmarksSubscriptionUpdateAction Action,
+        IReadOnlyList<string> IndexIds);
+
+    private sealed record PendingCfUpdate(
+        ActiveSubscriptionState State,
+        CfBenchmarksReplayUpdate Update,
+        long Sequence);
+
+    private sealed record ConfirmedCfUpdate(
+        long Sequence,
+        CfBenchmarksReplayUpdate Update);
 
     private Uri GetWebSocketUri() => _options.BaseUri is not null
         ? new Uri(_options.BaseUri, "/trade-api/ws/v2")

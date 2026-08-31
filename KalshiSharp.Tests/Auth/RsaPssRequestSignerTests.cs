@@ -1,5 +1,7 @@
 using FluentAssertions;
 using KalshiSharp.Auth;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace KalshiSharp.Tests.Auth;
 
@@ -242,6 +244,32 @@ public class RsaPssRequestSignerTests : IDisposable
 
         // Note: We can't compare signatures directly because RSA-PSS is randomized.
         // The key verification is that query params don't affect the signed path.
+    }
+
+    [Fact]
+    public void Sign_CfBenchmarksRequest_ExcludesQueryFromCanonicalMessage()
+    {
+        var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "https://api.kalshi.com/trade-api/v2/cfbenchmarks/history/values?id=BRTI&timespan=HOUR");
+        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(1704067200000);
+
+        _signer.Sign(request, ReadOnlySpan<byte>.Empty, timestamp);
+
+        var signature = Convert.FromBase64String(request.Headers
+            .GetValues(RsaPssRequestSigner.AccessSignatureHeader)
+            .Single());
+        using var rsa = RSA.Create();
+        rsa.ImportFromPem(TestPrivateKeyPem.AsSpan());
+        var canonicalMessage = Encoding.UTF8.GetBytes(
+            "1704067200000GET/trade-api/v2/cfbenchmarks/history/values");
+        var messageWithQuery = Encoding.UTF8.GetBytes(
+            "1704067200000GET/trade-api/v2/cfbenchmarks/history/values?id=BRTI&timespan=HOUR");
+
+        rsa.VerifyData(canonicalMessage, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pss)
+            .Should().BeTrue();
+        rsa.VerifyData(messageWithQuery, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pss)
+            .Should().BeFalse();
     }
 
     [Fact]

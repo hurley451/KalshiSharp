@@ -3,6 +3,7 @@ using KalshiSharp.Auth;
 using KalshiSharp.Configuration;
 using KalshiSharp.Http;
 using KalshiSharp.Rest.Events;
+using KalshiSharp.Rest.CfBenchmarks;
 using KalshiSharp.Rest.Exchange;
 using KalshiSharp.Rest.Historical;
 using KalshiSharp.Rest.Incentives;
@@ -35,6 +36,7 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IUserClient _users;
     private readonly ISeriesClient? _series;
     private readonly IAccountClient? _account;
+    private readonly ICfBenchmarksClient? _cfBenchmarks;
 
     // Resources we own and must dispose (only set when using direct instantiation)
     private readonly HttpClient? _ownedHttpClient;
@@ -111,6 +113,7 @@ public sealed class KalshiClient : IKalshiClient
         _users = new UserClient(kalshiHttpClient);
         _series = new SeriesClient(kalshiHttpClient);
         _account = new AccountClient(kalshiHttpClient);
+        _cfBenchmarks = new CfBenchmarksClient(kalshiHttpClient);
     }
 
     /// <summary>
@@ -133,6 +136,7 @@ public sealed class KalshiClient : IKalshiClient
         _users = new UserClient(httpClient);
         _series = new SeriesClient(httpClient);
         _account = new AccountClient(httpClient);
+        _cfBenchmarks = new CfBenchmarksClient(httpClient);
     }
 
     /// <summary>
@@ -164,6 +168,7 @@ public sealed class KalshiClient : IKalshiClient
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _series = null;
         _account = null;
+        _cfBenchmarks = null;
     }
 
     /// <inheritdoc />
@@ -183,6 +188,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _account;
+        }
+    }
+
+    /// <inheritdoc />
+    public ICfBenchmarksClient? CfBenchmarks
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _cfBenchmarks;
         }
     }
 
