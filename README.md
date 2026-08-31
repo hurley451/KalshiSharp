@@ -4,8 +4,8 @@ A production-grade .NET 8 SDK for the [Kalshi](https://kalshi.com) prediction ma
 
 ## Features
 
-- **Core API Coverage**: REST clients for exchange, markets, events, orders, portfolio, users, and historical data
-- **Real-time WebSocket**: Order book, ticker, trade, fill, position, and user-order subscriptions with auto-reconnect
+- **Core API Coverage**: REST clients for exchange, markets, events, orders, portfolio, users, historical data, and CF Benchmarks
+- **Real-time WebSocket**: Order book, ticker, trade, fill, position, user-order, and CF Benchmarks subscriptions with auto-reconnect
 - **Async-First**: All operations are async/await with proper cancellation support
 - **Thread-Safe**: Safe for concurrent use from multiple threads
 - **Strongly Typed**: Complete type coverage with nullable reference types enabled
@@ -238,6 +238,31 @@ foreach (var program in programs.Items)
 
 The shared endpoint also supports `IncentiveProgramType.MarginMakerVolume`. Margin programs may omit `MarketId`, `MarketTicker`, and other event-only fields; `MaxRewardPerAccount` exposes the optional account reward cap in centi-cents.
 
+### CF Benchmarks
+
+CF Benchmarks access is an optional passthrough capability. Provider-specific response fields remain available through `JsonElement` so upstream additions are not discarded.
+
+```csharp
+var cfBenchmarks = client.CfBenchmarks
+    ?? throw new NotSupportedException("This client does not provide CF Benchmarks access.");
+
+var current = await cfBenchmarks.GetCurrentAsync("values", new Dictionary<string, string?>
+{
+    ["id"] = "BRTI"
+});
+
+var historical = await cfBenchmarks.GetHistoricalAsync("values", new Dictionary<string, string?>
+{
+    ["id"] = "BRTI",
+    ["timespan"] = "HOUR"
+});
+
+Console.WriteLine(current.Data);
+Console.WriteLine(historical.Data);
+```
+
+Pass an unescaped provider-relative path without `history`; use `GetHistoricalAsync` for history routes. Each request consumes 50 read tokens and may require CF Benchmarks entitlements.
+
 ### WebSocket Real-Time Updates
 
 ```csharp
@@ -258,6 +283,7 @@ await using var wsClient = new KalshiWebSocketClient(new KalshiClientOptions
 await wsClient.ConnectAsync();
 await wsClient.SubscribeAsync(OrderBookSubscription.ForMarkets("TICKER-ABC"));
 await wsClient.SubscribeAsync(TradeSubscription.ForMarkets("TICKER-ABC"));
+await wsClient.SubscribeAsync(CfBenchmarksValueSubscription.ForIndices("BRTI"));
 
 // Process messages
 await foreach (var message in wsClient.Messages)
@@ -273,9 +299,14 @@ await foreach (var message in wsClient.Messages)
         case TradeUpdate trade:
             Console.WriteLine($"Trade: {trade.Message.CountFp} @ ${trade.Message.YesPriceDollars}");
             break;
+        case CfBenchmarksValueUpdate cfValue:
+            Console.WriteLine($"{cfValue.Message.IndexId}: {cfValue.Message.Data}");
+            break;
     }
 }
 ```
+
+Use the server-assigned ID from `SubscriptionConfirmation` to update a CF Benchmarks subscription with `UpdateCfBenchmarksSubscriptionAsync` or remove it with `UnsubscribeAsync(int)`. The update method returns the client command ID used to correlate index-list responses.
 
 ## Error Handling
 

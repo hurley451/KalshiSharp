@@ -72,4 +72,13 @@ public interface IKalshiWebSocketClient : IAsyncDisposable
         IReadOnlyList<string>? marketTickers = null,
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This WebSocket client does not support subscription updates.");
+
+    /// <summary>Updates an existing CF Benchmarks subscription.</summary>
+    /// <returns>The allocated command identifier for response correlation.</returns>
+    Task<int> UpdateCfBenchmarksSubscriptionAsync(
+        int subscriptionId,
+        CfBenchmarksSubscriptionUpdateAction action,
+        IReadOnlyList<string>? indexIds = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This WebSocket client does not support CF Benchmarks subscription updates.");
 }

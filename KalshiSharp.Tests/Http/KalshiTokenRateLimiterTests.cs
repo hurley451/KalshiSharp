@@ -116,6 +116,30 @@ public sealed class KalshiTokenRateLimiterTests
         result.TokenCost.Should().Be(17);
     }
 
+    [Theory]
+    [InlineData("/trade-api/v2/cfbenchmarks")]
+    [InlineData("/trade-api/v2/cfbenchmarks/values?id=BRTI")]
+    [InlineData("https://example.test/trade-api/v2/cfbenchmarks/history/values?id=BRTI")]
+    public async Task ClassifyAsync_CfBenchmarksReadsCostFiftyTokens(string uri)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+        var result = await RateLimitingDelegatingHandler.ClassifyAsync(request, 17, default);
+
+        result.IsWrite.Should().BeFalse();
+        result.TokenCost.Should().Be(50);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_CfBenchmarksLookalikeUsesDefaultCost()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/trade-api/v2/cfbenchmarks-values");
+
+        var result = await RateLimitingDelegatingHandler.ClassifyAsync(request, 17, default);
+
+        result.TokenCost.Should().Be(17);
+    }
+
     [Fact]
     public async Task ClassifyAsync_CancelAllOrdersUsesTierMaximumWriteCost()
     {

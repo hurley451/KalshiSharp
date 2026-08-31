@@ -105,15 +105,27 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
         int maximumWriteTokenCost,
         CancellationToken cancellationToken)
     {
-        var isWrite = request.Method != HttpMethod.Get && request.Method != HttpMethod.Head;
-        if (!isWrite)
-        {
-            return new RateLimitRequest { IsWrite = false, TokenCost = defaultTokenCost };
-        }
-
         var path = request.RequestUri is { IsAbsoluteUri: true } absolute
             ? absolute.AbsolutePath
             : request.RequestUri?.OriginalString.Split('?', 2)[0] ?? string.Empty;
+        var isWrite = request.Method != HttpMethod.Get && request.Method != HttpMethod.Head;
+        if (!isWrite)
+        {
+            var normalizedPath = path.TrimEnd('/');
+            var isCfBenchmarks = normalizedPath.Equals(
+                    "/trade-api/v2/cfbenchmarks",
+                    StringComparison.OrdinalIgnoreCase) ||
+                normalizedPath.StartsWith(
+                    "/trade-api/v2/cfbenchmarks/",
+                    StringComparison.OrdinalIgnoreCase);
+
+            return new RateLimitRequest
+            {
+                IsWrite = false,
+                TokenCost = isCfBenchmarks ? 50 : defaultTokenCost
+            };
+        }
+
         var isBatch = path.EndsWith("/batched", StringComparison.OrdinalIgnoreCase);
         var isV2Order = path.Contains("/portfolio/events/orders", StringComparison.OrdinalIgnoreCase);
         var isLegacyOrder = !isV2Order && path.Contains("/portfolio/orders", StringComparison.OrdinalIgnoreCase);

@@ -60,11 +60,9 @@ public static class ServiceCollectionExtensions
         });
 
         // Configure HttpClient with resilience pipeline
-        services.AddHttpClient<IKalshiHttpClient, KalshiHttpClient>(HttpClientName)
-            .AddHttpMessageHandler<RateLimitingDelegatingHandler>()
-            .AddHttpMessageHandler<SigningDelegatingHandler>()
-            .AddStandardResilienceHandler(options =>
-            {
+        var httpClientBuilder = services.AddHttpClient<IKalshiHttpClient, KalshiHttpClient>(HttpClientName);
+        httpClientBuilder.AddStandardResilienceHandler(options =>
+        {
                 // Retry policy: max 3 retries with exponential backoff and jitter
                 options.Retry.MaxRetryAttempts = 3;
                 options.Retry.Delay = TimeSpan.FromSeconds(1);
@@ -91,8 +89,11 @@ public static class ServiceCollectionExtensions
                 options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(30);
 
                 // Total request timeout: 2 minutes
-                options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(2);
-            });
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(2);
+        });
+        httpClientBuilder
+            .AddHttpMessageHandler<RateLimitingDelegatingHandler>()
+            .AddHttpMessageHandler<SigningDelegatingHandler>();
 
         // Register the Kalshi client
         services.AddSingleton<IKalshiClient>(sp =>

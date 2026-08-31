@@ -1,6 +1,7 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentAssertions;
 using KalshiSharp.Auth;
 using KalshiSharp.Configuration;
@@ -210,6 +211,380 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         command.Should().Contain("\"sids\":[17]");
         command.Should().Contain("\"action\":\"get_snapshot\"");
         command.Should().Contain("\"market_tickers\":[\"MARKET-1\"]");
+    }
+
+    [Fact]
+    public async Task CfBenchmarksCommands_UseIndexFieldsAndUniqueIds()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        var subscription = CfBenchmarksValueSubscription.ForIndices("BRTI", "ETHUSD_RTI");
+        await _client.SubscribeAsync(subscription);
+
+        using var subscribeJson = JsonDocument.Parse(_mockConnection.SentMessages[^1]);
+        var subscribeId = subscribeJson.RootElement.GetProperty("id").GetInt32();
+        var subscribeParams = subscribeJson.RootElement.GetProperty("params");
+        subscribeId.Should().BePositive();
+        subscribeParams.GetProperty("channels")[0].GetString().Should().Be("cfbenchmarks_value");
+        subscribeParams.GetProperty("index_ids").EnumerateArray()
+            .Select(value => value.GetString()).Should().Equal("BRTI", "ETHUSD_RTI");
+        subscribeParams.TryGetProperty("market_tickers", out _).Should().BeFalse();
+
+        _mockConnection.EnqueueMessage($$$"""{"type":"subscribed","id":{{{subscribeId}}},"msg":{"channel":"cfbenchmarks_value","sid":17}}""");
+        (await ReadNextMessageAsync(_client)).Should().BeOfType<SubscriptionConfirmation>();
+
+        var subscribeIndicesId = await _client.UpdateCfBenchmarksSubscriptionAsync(
+            17,
+            CfBenchmarksSubscriptionUpdateAction.SubscribeIndices,
+            ["GBBI"]);
+        var indexListId = await _client.UpdateCfBenchmarksSubscriptionAsync(
+            17,
+            CfBenchmarksSubscriptionUpdateAction.IndexList);
+
+        subscribeIndicesId.Should().BeGreaterThan(subscribeId);
+        indexListId.Should().BeGreaterThan(subscribeIndicesId);
+
+        using var updateJson = JsonDocument.Parse(_mockConnection.SentMessages[^2]);
+        var updateParams = updateJson.RootElement.GetProperty("params");
+        updateParams.GetProperty("sids").EnumerateArray().Should().ContainSingle()
+            .Which.GetInt32().Should().Be(17);
+        updateParams.GetProperty("action").GetString().Should().Be("subscribe_indices");
+        updateParams.GetProperty("index_ids")[0].GetString().Should().Be("GBBI");
+        updateParams.TryGetProperty("market_tickers", out _).Should().BeFalse();
+
+        using var indexListJson = JsonDocument.Parse(_mockConnection.SentMessages[^1]);
+        var indexListParams = indexListJson.RootElement.GetProperty("params");
+        indexListParams.GetProperty("action").GetString().Should().Be("indexlist");
+        indexListParams.TryGetProperty("index_ids", out _).Should().BeFalse();
+        indexListParams.TryGetProperty("market_tickers", out _).Should().BeFalse();
+
+        _mockConnection.EnqueueMessage($$$"""{"type":"cfbenchmarks_value_indexlist","id":{{{indexListId}}},"sid":17,"seq":1,"msg":{"index_ids":["BRTI","ETHUSD_RTI"]}}""");
+        var indexList = (await ReadNextMessageAsync(_client))
+            .Should().BeOfType<CfBenchmarksIndexList>().Subject;
+        indexList.Id.Should().Be(indexListId);
+    }
+
+    [Fact]
+    public async Task CfBenchmarksObjectUnsubscribe_RequiresServerIdWithoutSending()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+        var subscription = CfBenchmarksValueSubscription.ForAllIndices();
+        await _client.SubscribeAsync(subscription);
+        var sentCount = _mockConnection.SentMessages.Count;
+
+        var action = () => _client.UnsubscribeAsync(subscription);
+
+        await action.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*server-assigned subscription ID*");
+        _mockConnection.SentMessages.Should().HaveCount(sentCount);
+    }
+
+    [Fact]
+    public async Task CfBenchmarksConcurrentUpdates_AllocateDistinctPositiveIds()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+        await _client.SubscribeAsync(CfBenchmarksValueSubscription.ForIndices("BRTI"));
+        using var subscribeJson = JsonDocument.Parse(_mockConnection.SentMessages[^1]);
+        var subscribeId = subscribeJson.RootElement.GetProperty("id").GetInt32();
+        _mockConnection.EnqueueMessage($$$"""{"type":"subscribed","id":{{{subscribeId}}},"msg":{"channel":"cfbenchmarks_value","sid":21}}""");
+        await ReadNextMessageAsync(_client);
+
+        var ids = await Task.WhenAll(Enumerable.Range(0, 12).Select(_ =>
+            _client.UpdateCfBenchmarksSubscriptionAsync(
+                21,
+                CfBenchmarksSubscriptionUpdateAction.IndexList)));
+
+        ids.Should().OnlyContain(id => id > 0);
+        ids.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public async Task Reconnect_AllocatesReplayIdsBeforeExposingAuthenticatedSession()
+    {
+        var connection = new MockWebSocketConnection
+        {
+            IdleCloseDelay = TimeSpan.FromMilliseconds(500)
+        };
+        var reconnectPolicy = new ExponentialBackoffPolicy(
+            TimeSpan.FromMilliseconds(1),
+            TimeSpan.FromMilliseconds(1),
+            maxAttempts: 1);
+        await using var client = new KalshiWebSocketClient(
+            Options.Create(new KalshiClientOptions
+            {
+                ApiKey = "test-api-key",
+                ApiSecret = TestRsaPrivateKey,
+                Environment = KalshiEnvironment.Demo
+            }),
+            connection,
+            reconnectPolicy,
+            Substitute.For<ISystemClock>(),
+            NullLogger<KalshiWebSocketClient>.Instance);
+
+        await client.ConnectAsync();
+        await client.SubscribeAsync(CfBenchmarksValueSubscription.ForIndices("BRTI"));
+        var sentBeforeReconnect = connection.SentMessages.Count;
+        Task? concurrentSubscribe = null;
+        client.StateChanged += (_, args) =>
+        {
+            if (args.NewState == ConnectionState.Authenticated && connection.ConnectCount == 2)
+            {
+                concurrentSubscribe = client.SubscribeAsync(
+                    CfBenchmarksValueSubscription.ForIndices("ETHUSD_RTI"));
+            }
+        };
+
+        await WaitUntilAsync(() => concurrentSubscribe is not null, TimeSpan.FromSeconds(2));
+        await concurrentSubscribe!;
+
+        var newSessionCommandIds = connection.SentMessages
+            .Skip(sentBeforeReconnect)
+            .Select(GetCommandId)
+            .ToArray();
+        newSessionCommandIds.Should().OnlyContain(id => id > 0);
+        newSessionCommandIds.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public async Task CfBenchmarksSidUnsubscribe_UsesOnlyServerIdAndRemovesReplayState()
+    {
+        var connection = new MockWebSocketConnection
+        {
+            IdleCloseDelay = TimeSpan.FromMilliseconds(500)
+        };
+        var reconnectPolicy = new ExponentialBackoffPolicy(
+            TimeSpan.FromMilliseconds(1),
+            TimeSpan.FromMilliseconds(1),
+            maxAttempts: 1);
+        await using var client = new KalshiWebSocketClient(
+            Options.Create(new KalshiClientOptions
+            {
+                ApiKey = "test-api-key",
+                ApiSecret = TestRsaPrivateKey,
+                Environment = KalshiEnvironment.Demo
+            }),
+            connection,
+            reconnectPolicy,
+            Substitute.For<ISystemClock>(),
+            NullLogger<KalshiWebSocketClient>.Instance);
+
+        await client.ConnectAsync();
+        await client.SubscribeAsync(CfBenchmarksValueSubscription.ForIndices("BRTI"));
+        using var subscribeJson = JsonDocument.Parse(connection.SentMessages[^1]);
+        var subscribeId = subscribeJson.RootElement.GetProperty("id").GetInt32();
+        connection.EnqueueMessage($$$"""{"type":"subscribed","id":{{{subscribeId}}},"msg":{"channel":"cfbenchmarks_value","sid":31}}""");
+        await ReadNextMessageAsync(client);
+
+        await client.UnsubscribeAsync(31);
+
+        using var unsubscribeJson = JsonDocument.Parse(connection.SentMessages[^1]);
+        var unsubscribeParams = unsubscribeJson.RootElement.GetProperty("params");
+        unsubscribeParams.GetProperty("sids")[0].GetInt32().Should().Be(31);
+        unsubscribeParams.EnumerateObject().Select(property => property.Name)
+            .Should().Equal("sids");
+
+        await WaitUntilAsync(
+            () => connection.ConnectCount >= 2,
+            TimeSpan.FromSeconds(2));
+        connection.SentMessages.Count(message => message.Contains("\"cmd\":\"subscribe\"", StringComparison.Ordinal))
+            .Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CfBenchmarksDynamicUpdates_ReplayAfterReconnectConfirmation()
+    {
+        var connection = new MockWebSocketConnection
+        {
+            IdleCloseDelay = TimeSpan.FromMilliseconds(500)
+        };
+        var reconnectPolicy = new ExponentialBackoffPolicy(
+            TimeSpan.FromMilliseconds(1),
+            TimeSpan.FromMilliseconds(1),
+            maxAttempts: 1);
+        var clock = Substitute.For<ISystemClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+        await using var client = new KalshiWebSocketClient(
+            Options.Create(new KalshiClientOptions
+            {
+                ApiKey = "test-api-key",
+                ApiSecret = TestRsaPrivateKey,
+                Environment = KalshiEnvironment.Demo
+            }),
+            connection,
+            reconnectPolicy,
+            clock,
+            NullLogger<KalshiWebSocketClient>.Instance);
+
+        await client.ConnectAsync();
+        await client.SubscribeAsync(CfBenchmarksValueSubscription.ForAllIndices());
+        using var initialSubscribeJson = JsonDocument.Parse(connection.SentMessages[^1]);
+        var initialCommandId = initialSubscribeJson.RootElement.GetProperty("id").GetInt32();
+        connection.EnqueueMessage($$$"""{"type":"subscribed","id":{{{initialCommandId}}},"msg":{"channel":"cfbenchmarks_value","sid":41}}""");
+        await ReadNextMessageAsync(client);
+        var updateId = await client.UpdateCfBenchmarksSubscriptionAsync(
+            41,
+            CfBenchmarksSubscriptionUpdateAction.UnsubscribeIndices,
+            ["ETHUSD_RTI"]);
+        connection.EnqueueMessage($$$"""{"type":"ok","id":{{{updateId}}},"seq":2}""");
+        await ReadNextMessageAsync(client);
+
+        await WaitUntilAsync(
+            () => connection.SentMessages.Count(message => message.Contains("\"cmd\":\"subscribe\"", StringComparison.Ordinal)) >= 2,
+            TimeSpan.FromSeconds(2));
+        var reconnectSubscribe = connection.SentMessages.Last(message =>
+            message.Contains("\"cmd\":\"subscribe\"", StringComparison.Ordinal));
+        using var reconnectJson = JsonDocument.Parse(reconnectSubscribe);
+        var reconnectCommandId = reconnectJson.RootElement.GetProperty("id").GetInt32();
+        reconnectCommandId.Should().Be(1);
+        connection.EnqueueMessage($$$"""{"type":"subscribed","id":{{{reconnectCommandId}}},"msg":{"channel":"cfbenchmarks_value","sid":42}}""");
+        await ReadNextMessageAsync(client);
+
+        await WaitUntilAsync(
+            () => connection.SentMessages.Any(message =>
+                message.Contains("\"sids\":[42]", StringComparison.Ordinal) &&
+                message.Contains("\"action\":\"unsubscribe_indices\"", StringComparison.Ordinal)),
+            TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public async Task CfBenchmarksConcurrentConfirmedUpdates_ReplayInWireOrderWhenAcksAreReversed()
+    {
+        var connection = new MockWebSocketConnection
+        {
+            IdleCloseDelay = TimeSpan.FromMilliseconds(500)
+        };
+        var reconnectPolicy = new ExponentialBackoffPolicy(
+            TimeSpan.FromMilliseconds(1),
+            TimeSpan.FromMilliseconds(1),
+            maxAttempts: 1);
+        var clock = Substitute.For<ISystemClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+        await using var client = new KalshiWebSocketClient(
+            Options.Create(new KalshiClientOptions
+            {
+                ApiKey = "test-api-key",
+                ApiSecret = TestRsaPrivateKey,
+                Environment = KalshiEnvironment.Demo
+            }),
+            connection,
+            reconnectPolicy,
+            clock,
+            NullLogger<KalshiWebSocketClient>.Instance);
+
+        await client.ConnectAsync();
+        await client.SubscribeAsync(CfBenchmarksValueSubscription.ForIndices("BRTI"));
+        var initialCommandId = GetCommandId(connection.SentMessages[^1]);
+        connection.EnqueueMessage($$$"""{"type":"subscribed","id":{{{initialCommandId}}},"msg":{"channel":"cfbenchmarks_value","sid":61}}""");
+        await ReadNextMessageAsync(client);
+
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var unsubscribeTask = Task.Run(async () =>
+        {
+            await start.Task;
+            return await client.UpdateCfBenchmarksSubscriptionAsync(
+                61,
+                CfBenchmarksSubscriptionUpdateAction.UnsubscribeIndices,
+                ["ETHUSD_RTI"]);
+        });
+        var subscribeTask = Task.Run(async () =>
+        {
+            await start.Task;
+            return await client.UpdateCfBenchmarksSubscriptionAsync(
+                61,
+                CfBenchmarksSubscriptionUpdateAction.SubscribeIndices,
+                ["ETHUSD_RTI"]);
+        });
+        start.SetResult();
+        await Task.WhenAll(unsubscribeTask, subscribeTask);
+
+        var wireUpdates = connection.SentMessages
+            .Where(message => message.Contains("\"sids\":[61]", StringComparison.Ordinal))
+            .Select(GetUpdateCommand)
+            .ToArray();
+        wireUpdates.Should().HaveCount(2);
+        connection.EnqueueMessage($$$"""{"type":"ok","id":{{{wireUpdates[1].Id}}},"seq":2}""");
+        connection.EnqueueMessage($$$"""{"type":"ok","id":{{{wireUpdates[0].Id}}},"seq":3}""");
+        await ReadNextMessageAsync(client);
+        await ReadNextMessageAsync(client);
+
+        await WaitUntilAsync(
+            () => connection.SentMessages.Count(message =>
+                message.Contains("\"cmd\":\"subscribe\"", StringComparison.Ordinal)) >= 2,
+            TimeSpan.FromSeconds(2));
+        var reconnectSubscribe = connection.SentMessages.Last(message =>
+            message.Contains("\"cmd\":\"subscribe\"", StringComparison.Ordinal));
+        var reconnectCommandId = GetCommandId(reconnectSubscribe);
+        connection.EnqueueMessage($$$"""{"type":"subscribed","id":{{{reconnectCommandId}}},"msg":{"channel":"cfbenchmarks_value","sid":62}}""");
+        await ReadNextMessageAsync(client);
+
+        var replayActions = connection.SentMessages
+            .Where(message => message.Contains("\"sids\":[62]", StringComparison.Ordinal))
+            .Select(GetUpdateAction)
+            .ToArray();
+        replayActions.Should().Equal(wireUpdates.Select(update => update.Action));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CfBenchmarksUnconfirmedUpdates_AreNotReplayed(bool rejected)
+    {
+        var connection = new MockWebSocketConnection
+        {
+            IdleCloseDelay = TimeSpan.FromMilliseconds(300)
+        };
+        var reconnectPolicy = new ExponentialBackoffPolicy(
+            TimeSpan.FromMilliseconds(1),
+            TimeSpan.FromMilliseconds(1),
+            maxAttempts: 1);
+        var clock = Substitute.For<ISystemClock>();
+        clock.UtcNow.Returns(DateTimeOffset.UtcNow);
+        await using var client = new KalshiWebSocketClient(
+            Options.Create(new KalshiClientOptions
+            {
+                ApiKey = "test-api-key",
+                ApiSecret = TestRsaPrivateKey,
+                Environment = KalshiEnvironment.Demo
+            }),
+            connection,
+            reconnectPolicy,
+            clock,
+            NullLogger<KalshiWebSocketClient>.Instance);
+
+        await client.ConnectAsync();
+        await client.SubscribeAsync(CfBenchmarksValueSubscription.ForIndices("BRTI"));
+        using var initialSubscribe = JsonDocument.Parse(connection.SentMessages[^1]);
+        var initialCommandId = initialSubscribe.RootElement.GetProperty("id").GetInt32();
+        connection.EnqueueMessage($$$"""{"type":"subscribed","id":{{{initialCommandId}}},"msg":{"channel":"cfbenchmarks_value","sid":51}}""");
+        await ReadNextMessageAsync(client);
+
+        var updateId = await client.UpdateCfBenchmarksSubscriptionAsync(
+            51,
+            CfBenchmarksSubscriptionUpdateAction.UnsubscribeIndices,
+            ["ETHUSD_RTI"]);
+        if (rejected)
+        {
+            connection.EnqueueMessage($$$"""{"type":"error","id":{{{updateId}}},"msg":{"code":24,"msg":"Index IDs required"}}""");
+            await ReadNextMessageAsync(client);
+        }
+
+        await WaitUntilAsync(
+            () => connection.SentMessages.Count(message =>
+                message.Contains("\"cmd\":\"subscribe\"", StringComparison.Ordinal)) >= 2,
+            TimeSpan.FromSeconds(2));
+        var reconnectSubscribe = connection.SentMessages.Last(message =>
+            message.Contains("\"cmd\":\"subscribe\"", StringComparison.Ordinal));
+        using var reconnectJson = JsonDocument.Parse(reconnectSubscribe);
+        var reconnectCommandId = reconnectJson.RootElement.GetProperty("id").GetInt32();
+        connection.EnqueueMessage($$$"""{"type":"subscribed","id":{{{reconnectCommandId}}},"msg":{"channel":"cfbenchmarks_value","sid":52}}""");
+        await ReadNextMessageAsync(client);
+
+        connection.SentMessages.Should().NotContain(message =>
+            message.Contains("\"sids\":[52]", StringComparison.Ordinal) &&
+            message.Contains("\"action\":\"unsubscribe_indices\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -562,6 +937,192 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         fill.Message.OutcomeSide.Should().Be(OrderSide.Yes);
         fill.Message.ExchangeIndex.Should().Be(1);
         position.Message.PositionFp.Should().Be("6.00");
+    }
+
+    [Fact]
+    public void CfBenchmarksMessages_DeserializeOfficialSchemasLosslessly()
+    {
+        const string valueJson = """
+            {
+              "type":"cfbenchmarks_value",
+              "sid":1,
+              "seq":42,
+              "msg":{
+                "index_id":"BRTI",
+                "received_at":1710000000123,
+                "data":"{\"type\":\"value\",\"id\":\"BRTI\",\"value\":\"68000.12\"}",
+                "avg_60s_data":{
+                  "value":"68000.12000000",
+                  "window_size":3,
+                  "window_start_ts_ms":1709999940123,
+                  "window_end_ts_exclusive":1710000000123
+                },
+                "last_60s_windowed_average_15min":{
+                  "value":"68000.23000000",
+                  "window_size":14,
+                  "window_start_ts_ms":1709999980000,
+                  "window_end_ts_exclusive":1710000000123
+                },
+                "future_field":true
+              }
+            }
+            """;
+        const string indexListJson = """
+            {
+              "type":"cfbenchmarks_value_indexlist",
+              "sid":1,
+              "seq":1,
+              "msg":{"index_ids":["BRTI","ETHUSD_RTI"]}
+            }
+            """;
+
+        var value = JsonSerializer.Deserialize<WebSocketMessage>(valueJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<CfBenchmarksValueUpdate>().Subject;
+        var indexList = JsonSerializer.Deserialize<WebSocketMessage>(indexListJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<CfBenchmarksIndexList>().Subject;
+
+        value.Sequence.Should().Be(42);
+        value.Message.IndexId.Should().Be("BRTI");
+        value.Message.ReceivedAt.Should().Be(1710000000123);
+        value.Message.ReceivedAtUtc.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1710000000123));
+        value.Message.Data.Should().Be("{\"type\":\"value\",\"id\":\"BRTI\",\"value\":\"68000.12\"}");
+        value.Message.Average60Seconds.Value.Should().Be("68000.12000000");
+        value.Message.Average60Seconds.WindowStartTimestampMs.Should().Be(1709999940123);
+        value.Message.Last60SecondsWindowedAverage15Minutes!.WindowSize.Should().Be(14);
+        indexList.Id.Should().BeNull();
+        indexList.Message.IndexIds.Should().Equal("BRTI", "ETHUSD_RTI");
+    }
+
+    [Theory]
+    [InlineData("sid")]
+    [InlineData("seq")]
+    [InlineData("msg.index_id")]
+    [InlineData("msg.received_at")]
+    [InlineData("msg.data")]
+    [InlineData("msg.avg_60s_data")]
+    [InlineData("msg.avg_60s_data.value")]
+    [InlineData("msg.avg_60s_data.window_size")]
+    [InlineData("msg.avg_60s_data.window_start_ts_ms")]
+    [InlineData("msg.avg_60s_data.window_end_ts_exclusive")]
+    public void CfBenchmarksValue_RejectsMissingRequiredMembers(string memberPath)
+    {
+        var json = $$"""
+            {
+              "type":"cfbenchmarks_value",
+              "sid":1,
+              "seq":1,
+              "msg":{
+                "index_id":"BRTI",
+                "received_at":1710000000123,
+                "data":"{}",
+                "avg_60s_data":{
+                  "value":"68000.12",
+                  "window_size":1,
+                  "window_start_ts_ms":1710000000000,
+                  "window_end_ts_exclusive":1710000000123
+                }
+              }
+            }
+            """;
+        var node = JsonNode.Parse(json)!.AsObject();
+        RemoveJsonMember(node, memberPath);
+
+        Action action = () => JsonSerializer.Deserialize<WebSocketMessage>(
+            node.ToJsonString(),
+            KalshiJsonOptions.Default);
+
+        action.Should().Throw<JsonException>();
+    }
+
+    [Theory]
+    [InlineData("sid")]
+    [InlineData("seq")]
+    [InlineData("msg.index_ids")]
+    public void CfBenchmarksIndexList_RejectsMissingRequiredMembers(string memberPath)
+    {
+        var node = JsonNode.Parse(
+            """{"type":"cfbenchmarks_value_indexlist","sid":1,"seq":1,"msg":{"index_ids":["BRTI"]}}""")!
+            .AsObject();
+        RemoveJsonMember(node, memberPath);
+
+        Action action = () => JsonSerializer.Deserialize<WebSocketMessage>(
+            node.ToJsonString(),
+            KalshiJsonOptions.Default);
+
+        action.Should().Throw<JsonException>();
+    }
+
+    [Theory]
+    [InlineData("msg")]
+    [InlineData("msg.index_id")]
+    [InlineData("msg.data")]
+    [InlineData("msg.avg_60s_data")]
+    [InlineData("msg.avg_60s_data.value")]
+    public void CfBenchmarksValue_RejectsNullRequiredMembers(string memberPath)
+    {
+        var node = JsonNode.Parse(
+            """
+            {
+              "type":"cfbenchmarks_value",
+              "sid":1,
+              "seq":1,
+              "msg":{
+                "index_id":"BRTI",
+                "received_at":1710000000123,
+                "data":"{}",
+                "avg_60s_data":{
+                  "value":"68000.12",
+                  "window_size":1,
+                  "window_start_ts_ms":1710000000000,
+                  "window_end_ts_exclusive":1710000000123
+                }
+              }
+            }
+            """)!.AsObject();
+        SetJsonMemberToNull(node, memberPath);
+
+        Action action = () => JsonSerializer.Deserialize<WebSocketMessage>(
+            node.ToJsonString(),
+            KalshiJsonOptions.Default);
+
+        action.Should().Throw<JsonException>();
+    }
+
+    [Fact]
+    public void CfBenchmarksIndexList_RejectsNullIndexIds()
+    {
+        const string nullCollection =
+            """{"type":"cfbenchmarks_value_indexlist","sid":1,"seq":1,"msg":{"index_ids":null}}""";
+        const string nullElement =
+            """{"type":"cfbenchmarks_value_indexlist","sid":1,"seq":1,"msg":{"index_ids":["BRTI",null]}}""";
+
+        Action deserializeCollection = () => JsonSerializer.Deserialize<WebSocketMessage>(
+            nullCollection,
+            KalshiJsonOptions.Default);
+        Action deserializeElement = () => JsonSerializer.Deserialize<WebSocketMessage>(
+            nullElement,
+            KalshiJsonOptions.Default);
+
+        deserializeCollection.Should().Throw<JsonException>();
+        deserializeElement.Should().Throw<JsonException>();
+    }
+
+    [Fact]
+    public void CfBenchmarksOptionalMembers_CanBeOmitted()
+    {
+        const string valueJson =
+            """{"type":"cfbenchmarks_value","sid":1,"seq":1,"msg":{"index_id":"BRTI","received_at":1710000000123,"data":"{}","avg_60s_data":{"value":"68000.12","window_size":1,"window_start_ts_ms":1710000000000,"window_end_ts_exclusive":1710000000123}}}""";
+        const string indexListJson =
+            """{"type":"cfbenchmarks_value_indexlist","sid":1,"seq":1,"msg":{"index_ids":[]}}""";
+
+        var value = JsonSerializer.Deserialize<WebSocketMessage>(valueJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<CfBenchmarksValueUpdate>().Subject;
+        var indexList = JsonSerializer.Deserialize<WebSocketMessage>(indexListJson, KalshiJsonOptions.Default)
+            .Should().BeOfType<CfBenchmarksIndexList>().Subject;
+
+        value.Message.Last60SecondsWindowedAverage15Minutes.Should().BeNull();
+        indexList.Id.Should().BeNull();
+        indexList.Message.IndexIds.Should().BeEmpty();
     }
 
     [Fact]
@@ -918,6 +1479,75 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         orderUpdate.FilledCount.Should().Be(25);
     }
 
+    private static void RemoveJsonMember(JsonObject root, string memberPath)
+    {
+        var segments = memberPath.Split('.');
+        var parent = root;
+        for (var index = 0; index < segments.Length - 1; index++)
+        {
+            parent = parent[segments[index]]!.AsObject();
+        }
+
+        parent.Remove(segments[^1]);
+    }
+
+    private static void SetJsonMemberToNull(JsonObject root, string memberPath)
+    {
+        var segments = memberPath.Split('.');
+        var parent = root;
+        for (var index = 0; index < segments.Length - 1; index++)
+        {
+            parent = parent[segments[index]]!.AsObject();
+        }
+
+        parent[segments[^1]] = null;
+    }
+
+    private static int GetCommandId(string message)
+    {
+        using var document = JsonDocument.Parse(message);
+        return document.RootElement.GetProperty("id").GetInt32();
+    }
+
+    private static string? GetUpdateAction(string message)
+    {
+        using var document = JsonDocument.Parse(message);
+        return document.RootElement.GetProperty("params").GetProperty("action").GetString();
+    }
+
+    private static (int Id, string? Action) GetUpdateCommand(string message)
+    {
+        using var document = JsonDocument.Parse(message);
+        return (
+            document.RootElement.GetProperty("id").GetInt32(),
+            document.RootElement.GetProperty("params").GetProperty("action").GetString());
+    }
+
+    private static async Task<WebSocketMessage> ReadNextMessageAsync(IKalshiWebSocketClient client)
+    {
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        await foreach (var message in client.Messages.WithCancellation(cancellation.Token))
+        {
+            return message;
+        }
+
+        throw new TimeoutException("No WebSocket message was received.");
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (!condition())
+        {
+            if (DateTimeOffset.UtcNow >= deadline)
+            {
+                throw new TimeoutException("The expected WebSocket state was not reached.");
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
+        }
+    }
+
     /// <summary>
     /// Mock WebSocket connection for testing.
     /// </summary>
@@ -926,8 +1556,10 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         private readonly Queue<string> _messageQueue = new();
         private readonly List<string> _sentMessages = [];
         private readonly object _lock = new();
+        private readonly SemaphoreSlim _messageSignal = new(0);
         private ConnectionState _state = ConnectionState.Disconnected;
         private bool _connected;
+        private int _connectCount;
 
         public ConnectionState State
         {
@@ -944,7 +1576,20 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged;
 
-        public IReadOnlyList<string> SentMessages => _sentMessages;
+        public IReadOnlyList<string> SentMessages
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return [.. _sentMessages];
+                }
+            }
+        }
+
+        public int ConnectCount => Volatile.Read(ref _connectCount);
+
+        public TimeSpan IdleCloseDelay { get; init; } = TimeSpan.FromMilliseconds(100);
 
         public void SetupConnect()
         {
@@ -959,10 +1604,13 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
                 _messageQueue.Enqueue(json);
             }
+
+            _messageSignal.Release();
         }
 
         public Task ConnectAsync(Uri uri, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default)
         {
+            Interlocked.Increment(ref _connectCount);
             TransitionState(ConnectionState.Connecting);
             _connected = true;
             TransitionState(ConnectionState.Connected);
@@ -972,35 +1620,43 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         public Task SendAsync(ReadOnlyMemory<byte> message, CancellationToken cancellationToken = default)
         {
             var json = Encoding.UTF8.GetString(message.Span);
-            _sentMessages.Add(json);
+            lock (_lock)
+            {
+                _sentMessages.Add(json);
+            }
+
             return Task.CompletedTask;
         }
 
-        public ValueTask<WebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public async ValueTask<WebSocketReceiveResult> ReceiveAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
         {
+            var messageAvailable = await _messageSignal.WaitAsync(IdleCloseDelay, cancellationToken);
+            if (!messageAvailable)
+            {
+                return new WebSocketReceiveResult(
+                    0,
+                    WebSocketMessageType.Close,
+                    endOfMessage: true,
+                    WebSocketCloseStatus.NormalClosure,
+                    "No more messages");
+            }
+
             lock (_lock)
             {
                 if (_messageQueue.TryDequeue(out var message))
                 {
                     var bytes = Encoding.UTF8.GetBytes(message);
                     bytes.CopyTo(buffer);
-                    return ValueTask.FromResult(new WebSocketReceiveResult(
+                    return new WebSocketReceiveResult(
                         bytes.Length,
                         WebSocketMessageType.Text,
-                        endOfMessage: true));
+                        endOfMessage: true);
                 }
             }
 
-            // Simulate waiting for messages
-            return new ValueTask<WebSocketReceiveResult>(
-                Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken)
-                    .ContinueWith(_ => new WebSocketReceiveResult(
-                        0,
-                        WebSocketMessageType.Close,
-                        endOfMessage: true,
-                        WebSocketCloseStatus.NormalClosure,
-                        "No more messages"),
-                        cancellationToken));
+            throw new InvalidOperationException("The mock receive signal did not have a queued message.");
         }
 
         public Task CloseAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken = default)
