@@ -139,6 +139,44 @@ foreach (var item in series.Items)
 }
 ```
 
+### Discover Structured Targets and Milestones
+
+Structured targets identify participants, teams, or other subjects, while milestones connect
+those targets to scheduled events and live data.
+
+```csharp
+using KalshiSharp.Models.Requests;
+
+var targets = client.StructuredTargets
+    ?? throw new NotSupportedException("This client does not provide structured-target access.");
+var milestones = client.Milestones
+    ?? throw new NotSupportedException("This client does not provide milestone access.");
+
+var playerTargets = await targets.ListStructuredTargetsAsync(new StructuredTargetQuery
+{
+    Type = "basketball_player",
+    Competition = "NBA",
+    PageSize = 100
+});
+
+foreach (var target in playerTargets.Items)
+{
+    Console.WriteLine($"{target.Name}: {target.Details?.ImageUrl}");
+}
+
+var upcoming = await milestones.ListMilestonesAsync(new MilestoneQuery
+{
+    Limit = 100,
+    MinimumStartDate = DateTimeOffset.UtcNow,
+    Competition = "Pro Basketball (M)"
+});
+
+foreach (var milestone in upcoming.Items)
+{
+    Console.WriteLine($"{milestone.Title}: {milestone.StartDate:u}");
+}
+```
+
 ### Place and Cancel Orders
 
 ```csharp

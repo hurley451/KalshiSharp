@@ -6,6 +6,8 @@ using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
 using KalshiSharp.Rest.Series;
+using KalshiSharp.Rest.StructuredTargets;
+using KalshiSharp.Rest.Milestones;
 using KalshiSharp.Rest.Users;
 using KalshiSharp.Rest.Account;
 
@@ -67,4 +69,14 @@ public interface IKalshiClient : IDisposable
     /// Gets the series discovery client when the implementation supports it.
     /// </summary>
     ISeriesClient? Series => null;
+
+    /// <summary>
+    /// Gets the structured-target client when the implementation supports it.
+    /// </summary>
+    IStructuredTargetClient? StructuredTargets => null;
+
+    /// <summary>
+    /// Gets the milestone client when the implementation supports it.
+    /// </summary>
+    IMilestoneClient? Milestones => null;
 }

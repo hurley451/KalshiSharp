@@ -1,4 +1,5 @@
 using FluentAssertions;
+using KalshiSharp.Http;
 using KalshiSharp.Rest;
 using KalshiSharp.Rest.Events;
 using KalshiSharp.Rest.Exchange;
@@ -18,6 +19,18 @@ public sealed class SeriesClientCompatibilityTests
         IKalshiClient client = new LegacyRootClient();
 
         client.Series.Should().BeNull();
+        client.StructuredTargets.Should().BeNull();
+        client.Milestones.Should().BeNull();
+    }
+
+    [Fact]
+    public void CurrentRootClient_ProvidesReferenceDataCapabilities()
+    {
+        using var client = new KalshiClient(new NoOpHttpClient());
+
+        client.Series.Should().NotBeNull();
+        client.StructuredTargets.Should().NotBeNull();
+        client.Milestones.Should().NotBeNull();
     }
 
     private sealed class LegacyRootClient : IKalshiClient
@@ -37,5 +50,17 @@ public sealed class SeriesClientCompatibilityTests
         public void Dispose()
         {
         }
+    }
+
+    private sealed class NoOpHttpClient : IKalshiHttpClient
+    {
+        public Task<TResponse> SendAsync<TResponse>(
+            KalshiRequest request,
+            CancellationToken cancellationToken = default)
+            where TResponse : class =>
+            throw new NotSupportedException();
+
+        public Task SendAsync(KalshiRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }
