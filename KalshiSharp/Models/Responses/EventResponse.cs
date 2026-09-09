@@ -80,7 +80,9 @@ public sealed record EventResponse
     public required string CollateralReturnType { get; init; }
 
     /// <summary>
-    /// Whether this event is available to trade on brokers. 
+    /// Deprecated broker-availability field retained for compatibility.
+    /// Kalshi no longer populates this field and currently returns false.
+    /// Do not use it as an availability signal.
     /// </summary>
     public bool AvailableOnBrokers { get; init; }
 
