@@ -110,7 +110,7 @@ public sealed class EventClientTests : IDisposable
     }
 
     [Fact]
-    public async Task GetEventAsync_WithNestedMarkets_IncludesMarkets()
+    public async Task GetEventAsync_WithNestedMarkets_DefaultsOmittedBrokerAvailabilityToFalse()
     {
         // Arrange
         const string eventTicker = "AAPL-EVENT";
@@ -158,6 +158,7 @@ public sealed class EventClientTests : IDisposable
         result.Markets.Should().HaveCount(1);
         result.Markets![0].Ticker.Should().Be("AAPL-MARKET-1");
         result.Markets[0].Status.Should().Be(MarketStatus.Active);
+        result.AvailableOnBrokers.Should().BeFalse();
     }
 
     [Fact]

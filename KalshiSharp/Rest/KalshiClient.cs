@@ -10,6 +10,8 @@ using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
 using KalshiSharp.Rest.Series;
+using KalshiSharp.Rest.StructuredTargets;
+using KalshiSharp.Rest.Milestones;
 using KalshiSharp.Rest.Users;
 using KalshiSharp.Rest.Account;
 using KalshiSharp.RateLimiting;
@@ -34,6 +36,8 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IPortfolioClient _portfolio;
     private readonly IUserClient _users;
     private readonly ISeriesClient? _series;
+    private readonly IStructuredTargetClient? _structuredTargets;
+    private readonly IMilestoneClient? _milestones;
     private readonly IAccountClient? _account;
 
     // Resources we own and must dispose (only set when using direct instantiation)
@@ -110,6 +114,8 @@ public sealed class KalshiClient : IKalshiClient
         _portfolio = new PortfolioClient(kalshiHttpClient);
         _users = new UserClient(kalshiHttpClient);
         _series = new SeriesClient(kalshiHttpClient);
+        _structuredTargets = new StructuredTargetClient(kalshiHttpClient);
+        _milestones = new MilestoneClient(kalshiHttpClient);
         _account = new AccountClient(kalshiHttpClient);
     }
 
@@ -132,6 +138,8 @@ public sealed class KalshiClient : IKalshiClient
         _portfolio = new PortfolioClient(httpClient);
         _users = new UserClient(httpClient);
         _series = new SeriesClient(httpClient);
+        _structuredTargets = new StructuredTargetClient(httpClient);
+        _milestones = new MilestoneClient(httpClient);
         _account = new AccountClient(httpClient);
     }
 
@@ -163,6 +171,8 @@ public sealed class KalshiClient : IKalshiClient
         _portfolio = portfolio ?? throw new ArgumentNullException(nameof(portfolio));
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _series = null;
+        _structuredTargets = null;
+        _milestones = null;
         _account = null;
     }
 
@@ -273,6 +283,26 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _series;
+        }
+    }
+
+    /// <inheritdoc />
+    public IStructuredTargetClient? StructuredTargets
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _structuredTargets;
+        }
+    }
+
+    /// <inheritdoc />
+    public IMilestoneClient? Milestones
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _milestones;
         }
     }
 
