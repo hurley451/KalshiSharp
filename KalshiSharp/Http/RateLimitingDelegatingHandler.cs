@@ -127,7 +127,7 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
             return new RateLimitRequest
             {
                 IsWrite = true,
-                TokenCost = maximumWriteTokenCost,
+                TokenCost = 2,
                 IsBatch = true
             };
         }

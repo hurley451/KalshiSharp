@@ -87,6 +87,11 @@ public sealed class KalshiTokenRateLimiterTests
         {
             Content = new StringContent("""{"orders":[{"exchange_index":1},{"exchange_index":2}]}""")
         };
+        var cancelBatch = new HttpRequestMessage(HttpMethod.Delete,
+            "https://example.test/trade-api/v2/portfolio/events/orders/batched")
+        {
+            Content = new StringContent("""{"orders":[{"order_id":"one"},{"order_id":"two"}]}""")
+        };
         var legacyCreate = new HttpRequestMessage(HttpMethod.Post,
             "https://example.test/trade-api/v2/portfolio/orders")
         {
@@ -95,6 +100,7 @@ public sealed class KalshiTokenRateLimiterTests
 
         var cancelResult = await RateLimitingDelegatingHandler.ClassifyAsync(cancel, 10, default);
         var batchResult = await RateLimitingDelegatingHandler.ClassifyAsync(createBatch, 10, default);
+        var cancelBatchResult = await RateLimitingDelegatingHandler.ClassifyAsync(cancelBatch, 10, default);
         var legacyResult = await RateLimitingDelegatingHandler.ClassifyAsync(legacyCreate, 10, default);
 
         cancelResult.TokenCost.Should().Be(2);
@@ -102,6 +108,8 @@ public sealed class KalshiTokenRateLimiterTests
         batchResult.TokenCost.Should().Be(20);
         batchResult.IsBatch.Should().BeTrue();
         batchResult.ExchangeIndex.Should().BeNull();
+        cancelBatchResult.TokenCost.Should().Be(4);
+        cancelBatchResult.IsBatch.Should().BeTrue();
         legacyResult.TokenCost.Should().Be(100);
     }
 
@@ -117,7 +125,7 @@ public sealed class KalshiTokenRateLimiterTests
     }
 
     [Fact]
-    public async Task ClassifyAsync_CancelAllOrdersUsesTierMaximumWriteCost()
+    public async Task ClassifyAsync_CancelAllOrdersUsesSingleCancelWriteCost()
     {
         using var request = new HttpRequestMessage(
             HttpMethod.Delete,
@@ -132,6 +140,6 @@ public sealed class KalshiTokenRateLimiterTests
         result.IsWrite.Should().BeTrue();
         result.IsBatch.Should().BeTrue();
         result.ExchangeIndex.Should().BeNull();
-        result.TokenCost.Should().Be(300);
+        result.TokenCost.Should().Be(2);
     }
 }
