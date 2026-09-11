@@ -2,6 +2,7 @@ using KalshiSharp.Rest.Events;
 using KalshiSharp.Rest.Exchange;
 using KalshiSharp.Rest.Historical;
 using KalshiSharp.Rest.Incentives;
+using KalshiSharp.Rest.LiveData;
 using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
@@ -54,6 +55,11 @@ public interface IKalshiClient : IDisposable
     /// Gets the incentive-program client when the implementation supports it.
     /// </summary>
     IIncentiveClient? Incentives => null;
+
+    /// <summary>
+    /// Gets the live-data client when the implementation supports it.
+    /// </summary>
+    ILiveDataClient? LiveData => null;
 
     /// <summary>
     /// Gets the portfolio client for balance, positions, and fills endpoints.
