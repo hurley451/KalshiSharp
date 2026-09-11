@@ -66,6 +66,23 @@ public class MyService(IKalshiClient client)
 }
 ```
 
+### Localized Market Responses
+
+Kalshi can return localized market text and rules when a preferred language is configured.
+Use one BCP 47 language tag. Spanish and Portuguese, including regional variants such as
+`es-MX` and `pt-BR`, are currently documented. Valid but unsupported tags, or an omitted
+value, fall back to English.
+
+```csharp
+using var client = new KalshiClient(new KalshiClientOptions
+{
+    ApiKey = "your-api-key",
+    ApiSecret = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----",
+    Environment = KalshiEnvironment.Production,
+    PreferredLanguage = "es-MX"
+});
+```
+
 ### Get Exchange Schedule
 
 ```csharp
@@ -136,6 +153,44 @@ var series = await seriesClient.ListSeriesAsync(new SeriesQuery
 foreach (var item in series.Items)
 {
     Console.WriteLine($"{item.Ticker}: {item.Title}");
+}
+```
+
+### Discover Structured Targets and Milestones
+
+Structured targets identify participants, teams, or other subjects, while milestones connect
+those targets to scheduled events and live data.
+
+```csharp
+using KalshiSharp.Models.Requests;
+
+var targets = client.StructuredTargets
+    ?? throw new NotSupportedException("This client does not provide structured-target access.");
+var milestones = client.Milestones
+    ?? throw new NotSupportedException("This client does not provide milestone access.");
+
+var playerTargets = await targets.ListStructuredTargetsAsync(new StructuredTargetQuery
+{
+    Type = "basketball_player",
+    Competition = "NBA",
+    PageSize = 100
+});
+
+foreach (var target in playerTargets.Items)
+{
+    Console.WriteLine($"{target.Name}: {target.Details?.ImageUrl}");
+}
+
+var upcoming = await milestones.ListMilestonesAsync(new MilestoneQuery
+{
+    Limit = 100,
+    MinimumStartDate = DateTimeOffset.UtcNow,
+    Competition = "Pro Basketball (M)"
+});
+
+foreach (var milestone in upcoming.Items)
+{
+    Console.WriteLine($"{milestone.Title}: {milestone.StartDate:u}");
 }
 ```
 

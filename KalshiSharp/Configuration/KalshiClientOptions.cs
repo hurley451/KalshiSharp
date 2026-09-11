@@ -34,6 +34,13 @@ public sealed class KalshiClientOptions
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
+    /// Optional BCP 47 language tag for localized market content, such as <c>es</c>,
+    /// <c>es-MX</c>, or <c>pt-BR</c>. When omitted, no <c>Accept-Language</c>
+    /// header is sent and Kalshi returns English content.
+    /// </summary>
+    public string? PreferredLanguage { get; set; }
+
+    /// <summary>
     /// Tolerance for clock skew between client and server. Defaults to 30 seconds.
     /// </summary>
     public TimeSpan ClockSkewTolerance { get; set; } = TimeSpan.FromSeconds(30);
