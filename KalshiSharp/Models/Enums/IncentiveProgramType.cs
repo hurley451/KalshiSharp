@@ -15,5 +15,8 @@ public enum IncentiveProgramType
     Volume,
 
     /// <summary>Return Margin maker-volume incentive programs.</summary>
-    MarginMakerVolume
+    MarginMakerVolume,
+
+    /// <summary>Return Margin taker-volume incentive programs.</summary>
+    MarginTakerVolume
 }
