@@ -156,6 +156,7 @@ public sealed class IncentiveClientTests : IDisposable
     [InlineData(IncentiveProgramType.Liquidity, "liquidity")]
     [InlineData(IncentiveProgramType.Volume, "volume")]
     [InlineData(IncentiveProgramType.MarginMakerVolume, "margin_maker_volume")]
+    [InlineData(IncentiveProgramType.MarginTakerVolume, "margin_taker_volume")]
     public void ToQueryString_MapsEveryType(IncentiveProgramType type, string expected)
     {
         new IncentiveProgramQuery { Type = type }.ToQueryString()
@@ -219,6 +220,45 @@ public sealed class IncentiveClientTests : IDisposable
         program.MarketTicker.Should().BeNull();
         program.IncentiveType.Should().Be("margin_maker_volume");
         program.MaxRewardPerAccount.Should().Be(125000);
+    }
+
+    [Fact]
+    public async Task ListIncentiveProgramsAsync_DeserializesMarginTakerProgramWithoutEventFields()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/incentive_programs")
+                .WithParam("type", "margin_taker_volume")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "incentive_programs": [
+                        {
+                            "id": "margin-taker-program-1",
+                            "incentive_type": "margin_taker_volume",
+                            "incentive_description": "margin taker volume",
+                            "start_date": "2026-09-10T04:00:00Z",
+                            "end_date": "2026-09-11T04:00:00Z",
+                            "period_reward": 750000,
+                            "paid_out": false,
+                            "max_reward_per_account": 150000
+                        }
+                    ]
+                }
+                """));
+
+        var result = await _client.ListIncentiveProgramsAsync(new IncentiveProgramQuery
+        {
+            Type = IncentiveProgramType.MarginTakerVolume
+        });
+
+        var program = result.Items.Should().ContainSingle().Which;
+        program.MarketId.Should().BeNull();
+        program.MarketTicker.Should().BeNull();
+        program.IncentiveType.Should().Be("margin_taker_volume");
+        program.MaxRewardPerAccount.Should().Be(150000);
     }
 
     [Fact]

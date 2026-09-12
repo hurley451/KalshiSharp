@@ -318,7 +318,7 @@ foreach (var program in programs.Items)
 }
 ```
 
-The shared endpoint also supports `IncentiveProgramType.MarginMakerVolume`. Margin programs may omit `MarketId`, `MarketTicker`, and other event-only fields; `MaxRewardPerAccount` exposes the optional account reward cap in centi-cents.
+The shared endpoint also supports `IncentiveProgramType.MarginMakerVolume` and `IncentiveProgramType.MarginTakerVolume`. Margin programs may omit `MarketId`, `MarketTicker`, and other event-only fields; `MaxRewardPerAccount` exposes the optional account reward cap in centi-cents.
 
 ### WebSocket Real-Time Updates
 
