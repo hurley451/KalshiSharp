@@ -6,6 +6,7 @@ using KalshiSharp.Rest.Events;
 using KalshiSharp.Rest.Exchange;
 using KalshiSharp.Rest.Historical;
 using KalshiSharp.Rest.Incentives;
+using KalshiSharp.Rest.LiveData;
 using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
 using KalshiSharp.Rest.Portfolio;
@@ -33,6 +34,7 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IOrderClientV2? _ordersV2;
     private readonly IHistoricalClient? _historical;
     private readonly IIncentiveClient? _incentives;
+    private readonly ILiveDataClient? _liveData;
     private readonly IPortfolioClient _portfolio;
     private readonly IUserClient _users;
     private readonly ISeriesClient? _series;
@@ -111,6 +113,7 @@ public sealed class KalshiClient : IKalshiClient
         _ordersV2 = new OrderClientV2(kalshiHttpClient);
         _historical = new HistoricalClient(kalshiHttpClient);
         _incentives = new IncentiveClient(kalshiHttpClient);
+        _liveData = new LiveDataClient(kalshiHttpClient);
         _portfolio = new PortfolioClient(kalshiHttpClient);
         _users = new UserClient(kalshiHttpClient);
         _series = new SeriesClient(kalshiHttpClient);
@@ -135,6 +138,7 @@ public sealed class KalshiClient : IKalshiClient
         _ordersV2 = new OrderClientV2(httpClient);
         _historical = new HistoricalClient(httpClient);
         _incentives = new IncentiveClient(httpClient);
+        _liveData = new LiveDataClient(httpClient);
         _portfolio = new PortfolioClient(httpClient);
         _users = new UserClient(httpClient);
         _series = new SeriesClient(httpClient);
@@ -168,6 +172,7 @@ public sealed class KalshiClient : IKalshiClient
         _ordersV2 = null;
         _historical = null;
         _incentives = null;
+        _liveData = null;
         _portfolio = portfolio ?? throw new ArgumentNullException(nameof(portfolio));
         _users = users ?? throw new ArgumentNullException(nameof(users));
         _series = null;
@@ -253,6 +258,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _incentives;
+        }
+    }
+
+    /// <inheritdoc />
+    public ILiveDataClient? LiveData
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _liveData;
         }
     }
 

@@ -194,6 +194,32 @@ foreach (var milestone in upcoming.Items)
 }
 ```
 
+### Weather Live Data
+
+Weather live-data access is an optional client capability for city temperature indexes and
+their published calibration timeline.
+
+```csharp
+using KalshiSharp.Models.Requests;
+
+var liveData = client.LiveData
+    ?? throw new NotSupportedException("This client does not provide live-data access.");
+
+var weather = await liveData.GetWeatherIndexAsync("miami", new WeatherIndexQuery
+{
+    LastSec = 3600,
+    Detailed = true
+});
+
+foreach (var point in weather.Timeseries)
+{
+    Console.WriteLine($"{point.T}: {point.V?.ToString() ?? "incomplete"}");
+}
+
+var calibrations = await liveData.GetWeatherIndexCalibrationsAsync("miami");
+Console.WriteLine($"Calibration records: {calibrations.Calibrations.Count}");
+```
+
 ### Place and Cancel Orders
 
 ```csharp
