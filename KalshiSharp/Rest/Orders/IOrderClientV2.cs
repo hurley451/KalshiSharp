@@ -58,6 +58,9 @@ public interface IOrderClientV2
         /// <summary>
         /// Cancels up to 10,000 resting event orders across every exchange shard.
         /// </summary>
+        /// <remarks>
+        /// Kalshi may also cancel newly placed matching orders during the minute after this request.
+        /// </remarks>
         /// <param name="subaccount">
         /// Optional subaccount filter (0 for primary, 1-63 for subaccounts).
         /// Omit to select matching orders from any subaccount.
