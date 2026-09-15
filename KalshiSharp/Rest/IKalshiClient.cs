@@ -11,6 +11,7 @@ using KalshiSharp.Rest.StructuredTargets;
 using KalshiSharp.Rest.Milestones;
 using KalshiSharp.Rest.Users;
 using KalshiSharp.Rest.Account;
+using KalshiSharp.Rest.ApiKeys;
 
 namespace KalshiSharp.Rest;
 
@@ -21,6 +22,9 @@ public interface IKalshiClient : IDisposable
 {
     /// <summary>Gets account usage and rate-limit discovery when supported.</summary>
     IAccountClient? Account => null;
+
+    /// <summary>Gets API-key administration endpoints when supported.</summary>
+    IApiKeyClient? ApiKeys => null;
     /// <summary>
     /// Gets the exchange client for status and schedule endpoints.
     /// </summary>
