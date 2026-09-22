@@ -26,6 +26,7 @@ public sealed class SeriesClientTests
                     "frequency": "daily",
                     "title": "New York high temperature",
                     "category": "Climate and Weather",
+                    "categories": ["Climate and Weather", "Commodities"],
                     "tags": ["Daily temperature"],
                     "settlement_sources": [{"name":"NWS","url":"https://example.com/source"}],
                     "contract_url": "https://example.com/contract",
@@ -49,6 +50,8 @@ public sealed class SeriesClientTests
 
         httpClient.LastRequest!.Path.Should().Be("/trade-api/v2/series/KXHIGHNY?include_volume=true");
         result.Ticker.Should().Be("KXHIGHNY");
+        result.Category.Should().Be("Climate and Weather");
+        result.Categories.Should().Equal("Climate and Weather", "Commodities");
         result.FeeType.Should().Be("future_fee_type");
         result.FeeMultiplier.Should().Be(0.25m);
         result.Tags.Should().Equal("Daily temperature");
@@ -147,6 +150,30 @@ public sealed class SeriesClientTests
         series.SettlementSources[0].Url.Should().BeNull();
         series.SettlementSources[1].Name.Should().BeNull();
         series.SettlementSources[1].Url.Should().Be("https://example.com");
+    }
+
+    [Fact]
+    public void SeriesResponse_AllowsMissingDiscoveryCategoriesForCapturedPayloads()
+    {
+        var result = JsonSerializer.Deserialize<SeriesResponse>(
+            """
+            {
+              "ticker": "SERIES-1",
+              "frequency": "daily",
+              "title": "Series",
+              "category": "Other",
+              "tags": null,
+              "settlement_sources": null,
+              "contract_url": "https://example.com/contract",
+              "contract_terms_url": "https://example.com/terms",
+              "fee_type": "quadratic",
+              "fee_multiplier": 1,
+              "additional_prohibitions": null
+            }
+            """,
+            KalshiJsonOptions.Default);
+
+        result!.Categories.Should().BeNull();
     }
 
     [Theory]

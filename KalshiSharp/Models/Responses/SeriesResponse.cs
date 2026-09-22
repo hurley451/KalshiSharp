@@ -16,8 +16,13 @@ public sealed record SeriesResponse
     /// <summary>Human-readable series title.</summary>
     public required string Title { get; init; }
 
-    /// <summary>Series category.</summary>
+    /// <summary>Primary series category.</summary>
     public required string Category { get; init; }
+
+    /// <summary>
+    /// Discovery categories that can match the series category filter.
+    /// </summary>
+    public IReadOnlyList<string>? Categories { get; init; }
 
     /// <summary>Search and classification tags.</summary>
     public required IReadOnlyList<string>? Tags { get; init; }
