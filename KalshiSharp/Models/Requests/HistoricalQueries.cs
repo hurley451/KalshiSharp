@@ -81,17 +81,33 @@ public sealed record HistoricalFillQuery : PaginationParameters
     /// <summary>Market ticker filter.</summary>
     public string? Ticker { get; init; }
 
+    /// <summary>Minimum fill timestamp.</summary>
+    public DateTimeOffset? MinTimestamp { get; init; }
+
     /// <summary>Maximum fill timestamp.</summary>
     public DateTimeOffset? MaxTimestamp { get; init; }
 
-    /// <summary>Builds the encoded query string.</summary>
-    public string ToQueryString() => BuildTickerAndMaxTimestampQuery(this, Ticker, MaxTimestamp);
+    /// <summary>Optional subaccount filter. Omission returns fills for all permitted subaccounts.</summary>
+    public int? Subaccount { get; init; }
 
-    internal static string BuildTickerAndMaxTimestampQuery(
+    /// <summary>Builds the encoded query string.</summary>
+    public string ToQueryString() => BuildTickerTimestampAndSubaccountQuery(this, Ticker, MinTimestamp, MaxTimestamp, Subaccount);
+
+    internal static string BuildTickerTimestampAndSubaccountQuery(
         PaginationParameters pagination,
         string? ticker,
-        DateTimeOffset? maxTimestamp)
+        DateTimeOffset? minTimestamp,
+        DateTimeOffset? maxTimestamp,
+        int? subaccount)
     {
+        if (subaccount is < 0 or > 63)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(subaccount),
+                subaccount,
+                "Subaccount must be between 0 and 63.");
+        }
+
         var builder = new QueryStringBuilder();
         if (pagination.Limit.HasValue)
         {
@@ -100,9 +116,19 @@ public sealed record HistoricalFillQuery : PaginationParameters
 
         builder.AppendIfNotEmpty("cursor", pagination.Cursor);
         builder.AppendIfNotEmpty("ticker", ticker);
+        if (minTimestamp.HasValue)
+        {
+            builder.Append("min_ts", minTimestamp.Value.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
+        }
+
         if (maxTimestamp.HasValue)
         {
             builder.Append("max_ts", maxTimestamp.Value.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (subaccount.HasValue)
+        {
+            builder.Append("subaccount", subaccount.Value.ToString(CultureInfo.InvariantCulture));
         }
 
         return builder.Build();
@@ -115,11 +141,22 @@ public sealed record HistoricalOrderQuery : PaginationParameters
     /// <summary>Market ticker filter.</summary>
     public string? Ticker { get; init; }
 
+    /// <summary>Minimum order-update timestamp.</summary>
+    public DateTimeOffset? MinTimestamp { get; init; }
+
     /// <summary>Maximum order-update timestamp.</summary>
     public DateTimeOffset? MaxTimestamp { get; init; }
 
+    /// <summary>Optional subaccount filter. Omission returns orders for all permitted subaccounts.</summary>
+    public int? Subaccount { get; init; }
+
     /// <summary>Builds the encoded query string.</summary>
-    public string ToQueryString() => HistoricalFillQuery.BuildTickerAndMaxTimestampQuery(this, Ticker, MaxTimestamp);
+    public string ToQueryString() => HistoricalFillQuery.BuildTickerTimestampAndSubaccountQuery(
+        this,
+        Ticker,
+        MinTimestamp,
+        MaxTimestamp,
+        Subaccount);
 }
 
 /// <summary>Query parameters for archived positions.</summary>
