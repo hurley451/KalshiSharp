@@ -152,7 +152,10 @@ var series = await seriesClient.ListSeriesAsync(new SeriesQuery
 
 foreach (var item in series.Items)
 {
-    Console.WriteLine($"{item.Ticker}: {item.Title}");
+    var discoveryCategories = item.Categories is { Count: > 0 }
+        ? string.Join(", ", item.Categories)
+        : item.Category;
+    Console.WriteLine($"{item.Ticker}: {item.Title} ({discoveryCategories})");
 }
 ```
 
