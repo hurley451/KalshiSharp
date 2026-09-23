@@ -218,6 +218,57 @@ public sealed class HistoricalClientTests : IDisposable
         positions.MarketPositions[0].ExchangeIndex.Should().Be(1);
     }
 
+    [Fact]
+    public async Task HistoricalFillsAndOrders_IncludeTimestampAndSubaccountFilters()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/historical/fills")
+                .WithParam("ticker", "KXTEST-26AUG19")
+                .WithParam("min_ts", "1787097600")
+                .WithParam("max_ts", "1787184000")
+                .WithParam("subaccount", "63")
+                .UsingGet())
+            .RespondWith(JsonResponse("""{"fills":[],"cursor":""}"""));
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/historical/orders")
+                .WithParam("ticker", "KXTEST-26AUG19")
+                .WithParam("min_ts", "1787097600")
+                .WithParam("max_ts", "1787184000")
+                .WithParam("subaccount", "0")
+                .UsingGet())
+            .RespondWith(JsonResponse("""{"orders":[],"cursor":""}"""));
+
+        var fills = await _client.ListFillsAsync(new HistoricalFillQuery
+        {
+            Ticker = "KXTEST-26AUG19",
+            MinTimestamp = DateTimeOffset.FromUnixTimeSeconds(1787097600),
+            MaxTimestamp = DateTimeOffset.FromUnixTimeSeconds(1787184000),
+            Subaccount = 63
+        });
+        var orders = await _client.ListOrdersAsync(new HistoricalOrderQuery
+        {
+            Ticker = "KXTEST-26AUG19",
+            MinTimestamp = DateTimeOffset.FromUnixTimeSeconds(1787097600),
+            MaxTimestamp = DateTimeOffset.FromUnixTimeSeconds(1787184000),
+            Subaccount = 0
+        });
+
+        fills.Fills.Should().BeEmpty();
+        orders.Orders.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(64)]
+    public void HistoricalFillsAndOrders_RejectInvalidSubaccounts(int subaccount)
+    {
+        var fills = () => new HistoricalFillQuery { Subaccount = subaccount }.ToQueryString();
+        var orders = () => new HistoricalOrderQuery { Subaccount = subaccount }.ToQueryString();
+
+        fills.Should().Throw<ArgumentOutOfRangeException>();
+        orders.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
     private static IResponseBuilder JsonResponse(string body) => Response.Create()
         .WithStatusCode(200)
         .WithHeader("Content-Type", "application/json")
