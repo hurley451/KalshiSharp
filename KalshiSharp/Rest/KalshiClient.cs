@@ -15,6 +15,7 @@ using KalshiSharp.Rest.StructuredTargets;
 using KalshiSharp.Rest.Milestones;
 using KalshiSharp.Rest.Users;
 using KalshiSharp.Rest.Account;
+using KalshiSharp.Rest.ApiKeys;
 using KalshiSharp.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -41,6 +42,7 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IStructuredTargetClient? _structuredTargets;
     private readonly IMilestoneClient? _milestones;
     private readonly IAccountClient? _account;
+    private readonly IApiKeyClient? _apiKeys;
 
     // Resources we own and must dispose (only set when using direct instantiation)
     private readonly HttpClient? _ownedHttpClient;
@@ -120,6 +122,7 @@ public sealed class KalshiClient : IKalshiClient
         _structuredTargets = new StructuredTargetClient(kalshiHttpClient);
         _milestones = new MilestoneClient(kalshiHttpClient);
         _account = new AccountClient(kalshiHttpClient);
+        _apiKeys = new ApiKeyClient(kalshiHttpClient);
     }
 
     /// <summary>
@@ -145,6 +148,7 @@ public sealed class KalshiClient : IKalshiClient
         _structuredTargets = new StructuredTargetClient(httpClient);
         _milestones = new MilestoneClient(httpClient);
         _account = new AccountClient(httpClient);
+        _apiKeys = new ApiKeyClient(httpClient);
     }
 
     /// <summary>
@@ -179,6 +183,7 @@ public sealed class KalshiClient : IKalshiClient
         _structuredTargets = null;
         _milestones = null;
         _account = null;
+        _apiKeys = null;
     }
 
     /// <inheritdoc />
@@ -198,6 +203,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _account;
+        }
+    }
+
+    /// <inheritdoc />
+    public IApiKeyClient? ApiKeys
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _apiKeys;
         }
     }
 

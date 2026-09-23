@@ -26,6 +26,11 @@ public sealed class KalshiRequest
     public object? Content { get; init; }
 
     /// <summary>
+    /// Whether successful response content should be redacted from deserialization exceptions.
+    /// </summary>
+    public bool RedactResponseContentInExceptions { get; init; }
+
+    /// <summary>
     /// Builds the full relative URI including query parameters.
     /// </summary>
     /// <returns>The relative URI with query string.</returns>

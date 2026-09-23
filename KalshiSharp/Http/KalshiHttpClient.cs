@@ -95,7 +95,7 @@ public sealed partial class KalshiHttpClient : IKalshiHttpClient
                 throw new KalshiException(
                     "Failed to deserialize response: result was null",
                     response.StatusCode,
-                    rawResponse: rawContent,
+                    rawResponse: GetExceptionRawResponse(request, rawContent),
                     requestId: requestId);
             }
             return result;
@@ -105,11 +105,16 @@ public sealed partial class KalshiHttpClient : IKalshiHttpClient
             throw new KalshiException(
                 $"Failed to deserialize response: {ex.Message}",
                 response.StatusCode,
-                rawResponse: rawContent,
+                rawResponse: GetExceptionRawResponse(request, rawContent),
                 requestId: requestId,
                 innerException: ex);
         }
     }
+
+    private static string? GetExceptionRawResponse(KalshiRequest request, string? rawContent) =>
+        request.RedactResponseContentInExceptions && rawContent is not null
+            ? "<redacted>"
+            : rawContent;
 
     /// <inheritdoc />
     public async Task SendAsync(KalshiRequest request, CancellationToken cancellationToken = default)

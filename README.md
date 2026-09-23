@@ -323,6 +323,31 @@ foreach (var program in programs.Items)
 
 The shared endpoint also supports `IncentiveProgramType.MarginMakerVolume` and `IncentiveProgramType.MarginTakerVolume`. Margin programs may omit `MarketId`, `MarketTicker`, and other event-only fields; `MaxRewardPerAccount` exposes the optional account reward cap in centi-cents.
 
+### API Key Administration
+
+```csharp
+using KalshiSharp.Models.Common;
+using KalshiSharp.Models.Requests;
+
+var apiKeys = client.ApiKeys
+    ?? throw new NotSupportedException("This client does not provide API-key administration.");
+
+var keys = await apiKeys.ListApiKeysAsync();
+foreach (var key in keys.ApiKeys)
+{
+    Console.WriteLine($"{key.ApiKeyId}: {key.Name}");
+}
+
+var generated = await apiKeys.GenerateApiKeyAsync(new GenerateApiKeyRequest
+{
+    Name = "readonly-reporting",
+    Scopes = [ApiKeyScopes.Read]
+});
+
+// Store generated.PrivateKey immediately. Kalshi returns it once and the SDK redacts it from ToString().
+Console.WriteLine($"Generated API key: {generated.ApiKeyId}");
+```
+
 ### WebSocket Real-Time Updates
 
 ```csharp
