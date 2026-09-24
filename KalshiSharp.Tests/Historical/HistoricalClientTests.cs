@@ -258,6 +258,27 @@ public sealed class HistoricalClientTests : IDisposable
     }
 
     [Theory]
+    [InlineData(0)]
+    [InlineData(63)]
+    public async Task HistoricalPositions_IncludeSubaccountFilter(int subaccount)
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/historical/positions")
+                .WithParam("event_ticker", "KXTEST-26AUG")
+                .WithParam("subaccount", subaccount.ToString(CultureInfo.InvariantCulture))
+                .UsingGet())
+            .RespondWith(JsonResponse("""{"market_positions":[],"event_positions":[],"cursor":""}"""));
+
+        var positions = await _client.ListPositionsAsync(new HistoricalPositionQuery
+        {
+            EventTicker = "KXTEST-26AUG",
+            Subaccount = subaccount
+        });
+
+        positions.MarketPositions.Should().BeEmpty();
+    }
+
+    [Theory]
     [InlineData(-1)]
     [InlineData(64)]
     public void HistoricalFillsAndOrders_RejectInvalidSubaccounts(int subaccount)
@@ -267,6 +288,16 @@ public sealed class HistoricalClientTests : IDisposable
 
         fills.Should().Throw<ArgumentOutOfRangeException>();
         orders.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(64)]
+    public void HistoricalPositions_RejectInvalidSubaccounts(int subaccount)
+    {
+        var positions = () => new HistoricalPositionQuery { Subaccount = subaccount }.ToQueryString();
+
+        positions.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     private static IResponseBuilder JsonResponse(string body) => Response.Create()

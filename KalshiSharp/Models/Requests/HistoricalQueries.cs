@@ -168,13 +168,29 @@ public sealed record HistoricalPositionQuery : PaginationParameters
     /// <summary>Event ticker filter.</summary>
     public string? EventTicker { get; init; }
 
+    /// <summary>Optional subaccount filter. Omission returns primary-subaccount positions.</summary>
+    public int? Subaccount { get; init; }
+
     /// <summary>Builds the encoded query string.</summary>
     public string ToQueryString()
     {
+        if (Subaccount is < 0 or > 63)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(Subaccount),
+                Subaccount,
+                "Subaccount must be between 0 and 63.");
+        }
+
         var builder = new QueryStringBuilder();
         AppendPaginationParameters(builder);
         builder.AppendIfNotEmpty("ticker", Ticker);
         builder.AppendIfNotEmpty("event_ticker", EventTicker);
+        if (Subaccount.HasValue)
+        {
+            builder.Append("subaccount", Subaccount.Value.ToString(CultureInfo.InvariantCulture));
+        }
+
         return builder.Build();
     }
 }
