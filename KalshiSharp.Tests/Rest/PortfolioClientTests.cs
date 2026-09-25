@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Text.Json;
 using FluentAssertions;
 using KalshiSharp.Auth;
 using KalshiSharp.Tests.Auth;
@@ -543,6 +544,106 @@ public sealed class PortfolioClientTests : IDisposable
         result.SubaccountBalances[0].SubaccountNumber.Should().Be(2);
         result.SubaccountBalances[0].ExchangeIndex.Should().Be(1);
         result.SubaccountBalances[0].Balance.Should().Be("125.5000");
+    }
+
+    [Fact]
+    public async Task GetTargetBalanceAllocationAsync_ParsesRestingMarginReservation()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/target_balance_allocation")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "allocations": [
+                        { "exchange_index": 0, "percent": 70 },
+                        { "exchange_index": 2, "percent": 30 }
+                    ],
+                    "resting_margin_reservation": "none"
+                }
+                """));
+
+        var result = await _portfolioClient.GetTargetBalanceAllocationAsync();
+
+        result.Allocations.Should().HaveCount(2);
+        result.Allocations[0].ExchangeIndex.Should().Be(0);
+        result.Allocations[0].Percent.Should().Be(70);
+        result.RestingMarginReservation.Should().Be(RestingMarginReservation.None);
+    }
+
+    [Fact]
+    public async Task SetTargetBalanceAllocationAsync_SendsAllocationsAndRestingPolicy()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/target_balance_allocation")
+                .UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("{}"));
+
+        await _portfolioClient.SetTargetBalanceAllocationAsync(new SetTargetBalanceAllocationRequest
+        {
+            Allocations =
+            [
+                new TargetBalanceAllocationRequest { ExchangeIndex = 0, Percent = 60 },
+                new TargetBalanceAllocationRequest { ExchangeIndex = 3, Percent = 40 }
+            ],
+            RestingMarginReservation = RestingMarginReservation.Max
+        });
+
+        _server.LogEntries.Should().ContainSingle();
+        var requestBody = _server.LogEntries[0].RequestMessage!.Body;
+        requestBody.Should().NotBeNull();
+        using var body = JsonDocument.Parse(requestBody!);
+        body.RootElement.GetProperty("resting_margin_reservation").GetString().Should().Be("max");
+        body.RootElement.GetProperty("allocations")[0].GetProperty("exchange_index").GetInt32().Should().Be(0);
+        body.RootElement.GetProperty("allocations")[1].GetProperty("percent").GetInt32().Should().Be(40);
+    }
+
+    [Fact]
+    public async Task SetTargetBalanceAllocationAsync_AllowsEmptyAllocationsToDisableRebalancing()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/target_balance_allocation")
+                .UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("{}"));
+
+        await _portfolioClient.SetTargetBalanceAllocationAsync(new SetTargetBalanceAllocationRequest
+        {
+            Allocations = [],
+            RestingMarginReservation = RestingMarginReservation.None
+        });
+
+        var requestBody = _server.LogEntries[0].RequestMessage!.Body;
+        requestBody.Should().NotBeNull();
+        using var body = JsonDocument.Parse(requestBody!);
+        body.RootElement.GetProperty("allocations").GetArrayLength().Should().Be(0);
+        body.RootElement.GetProperty("resting_margin_reservation").GetString().Should().Be("none");
+    }
+
+    [Fact]
+    public async Task SetTargetBalanceAllocationAsync_ValidatesDocumentedAllocationRules()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _portfolioClient.SetTargetBalanceAllocationAsync(new SetTargetBalanceAllocationRequest
+            {
+                Allocations = [new TargetBalanceAllocationRequest { ExchangeIndex = 0, Percent = 99 }]
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.SetTargetBalanceAllocationAsync(new SetTargetBalanceAllocationRequest
+            {
+                Allocations = [new TargetBalanceAllocationRequest { ExchangeIndex = -1, Percent = 100 }]
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.SetTargetBalanceAllocationAsync(new SetTargetBalanceAllocationRequest
+            {
+                Allocations = [new TargetBalanceAllocationRequest { ExchangeIndex = 0, Percent = 101 }]
+            }));
     }
 
     [Fact]

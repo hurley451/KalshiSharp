@@ -323,6 +323,27 @@ foreach (var program in programs.Items)
 
 The shared endpoint also supports `IncentiveProgramType.MarginMakerVolume` and `IncentiveProgramType.MarginTakerVolume`. Margin programs may omit `MarketId`, `MarketTicker`, and other event-only fields; `MaxRewardPerAccount` exposes the optional account reward cap in centi-cents.
 
+### Target Balance Allocation
+
+```csharp
+using KalshiSharp.Models.Enums;
+using KalshiSharp.Models.Requests;
+
+var currentAllocation = await client.Portfolio.GetTargetBalanceAllocationAsync();
+
+await client.Portfolio.SetTargetBalanceAllocationAsync(new SetTargetBalanceAllocationRequest
+{
+    Allocations =
+    [
+        new TargetBalanceAllocationRequest { ExchangeIndex = 0, Percent = 70 },
+        new TargetBalanceAllocationRequest { ExchangeIndex = 2, Percent = 30 }
+    ],
+    RestingMarginReservation = RestingMarginReservation.None
+});
+```
+
+Percentages must total 100 unless the allocation list is empty, which disables automatic rebalancing. Omit `RestingMarginReservation` to keep Kalshi's default `sum` policy.
+
 ### API Key Administration
 
 ```csharp

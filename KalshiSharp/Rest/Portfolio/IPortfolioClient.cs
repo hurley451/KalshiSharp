@@ -23,6 +23,19 @@ public interface IPortfolioClient
     Task<SubaccountBalancesResponse> GetSubaccountBalancesAsync(CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support all-subaccount balances.");
 
+    /// <summary>Retrieves target balance allocations across exchange indexes.</summary>
+    Task<TargetBalanceAllocationResponse> GetTargetBalanceAllocationAsync(CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support target balance allocations.");
+
+    /// <summary>
+    /// Replaces target balance allocations across exchange indexes. An empty allocation list disables automatic
+    /// rebalancing.
+    /// </summary>
+    Task SetTargetBalanceAllocationAsync(
+        SetTargetBalanceAllocationRequest request,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support target balance allocations.");
+
     /// <summary>
     /// Lists positions with optional filtering and pagination.
     /// </summary>

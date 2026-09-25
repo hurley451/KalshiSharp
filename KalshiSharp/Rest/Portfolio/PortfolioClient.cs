@@ -58,6 +58,35 @@ internal sealed class PortfolioClient : IPortfolioClient
     }
 
     /// <inheritdoc />
+    public Task<TargetBalanceAllocationResponse> GetTargetBalanceAllocationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/target_balance_allocation"
+        };
+        return _httpClient.SendAsync<TargetBalanceAllocationResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task SetTargetBalanceAllocationAsync(
+        SetTargetBalanceAllocationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateTargetBalanceAllocation(request);
+
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Post,
+            Path = $"{BasePath}/target_balance_allocation",
+            Content = request
+        };
+        return _httpClient.SendAsync(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<PositionsResponse> ListPositionsAsync(
         string? cursor = null,
         int? limit = null,
@@ -181,5 +210,37 @@ internal sealed class PortfolioClient : IPortfolioClient
         }
 
         return parameters.Count > 0 ? $"?{string.Join("&", parameters)}" : string.Empty;
+    }
+
+    private static void ValidateTargetBalanceAllocation(SetTargetBalanceAllocationRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request.Allocations);
+
+        var totalPercent = 0;
+        foreach (var allocation in request.Allocations)
+        {
+            if (allocation.ExchangeIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(request),
+                    "Target balance allocation exchange indexes must be nonnegative.");
+            }
+
+            if (allocation.Percent is < 0 or > 100)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(request),
+                    "Target balance allocation percentages must be between 0 and 100.");
+            }
+
+            totalPercent += allocation.Percent;
+        }
+
+        if (request.Allocations.Count > 0 && totalPercent != 100)
+        {
+            throw new ArgumentException(
+                "Target balance allocation percentages must total 100, or be empty to disable automatic rebalancing.",
+                nameof(request));
+        }
     }
 }
