@@ -23,6 +23,10 @@ public interface IPortfolioClient
     Task<SubaccountBalancesResponse> GetSubaccountBalancesAsync(CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support all-subaccount balances.");
 
+    /// <summary>Gets the total value of resting orders and exchange-index breakdowns.</summary>
+    Task<TotalRestingOrderValueResponse> GetTotalRestingOrderValueAsync(CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support resting order value summaries.");
+
     /// <summary>Retrieves target balance allocations across exchange indexes.</summary>
     Task<TargetBalanceAllocationResponse> GetTargetBalanceAllocationAsync(CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support target balance allocations.");

@@ -547,6 +547,34 @@ public sealed class PortfolioClientTests : IDisposable
     }
 
     [Fact]
+    public async Task GetTotalRestingOrderValueAsync_ParsesExchangeBreakdown()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/summary/total_resting_order_value")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "total_resting_order_value": 2147483648,
+                    "resting_order_value_breakdown": [
+                        { "exchange_index": 0, "balance": "0.5600" },
+                        { "exchange_index": 2, "balance": "12.3400" }
+                    ]
+                }
+                """));
+
+        var result = await _portfolioClient.GetTotalRestingOrderValueAsync();
+
+        result.TotalRestingOrderValue.Should().Be(2_147_483_648);
+        result.RestingOrderValueBreakdown.Should().HaveCount(2);
+        result.RestingOrderValueBreakdown[0].ExchangeIndex.Should().Be(0);
+        result.RestingOrderValueBreakdown[0].Balance.Should().Be("0.5600");
+        result.RestingOrderValueBreakdown[1].ExchangeIndex.Should().Be(2);
+        result.RestingOrderValueBreakdown[1].Balance.Should().Be("12.3400");
+    }
+
+    [Fact]
     public async Task GetTargetBalanceAllocationAsync_ParsesRestingMarginReservation()
     {
         _server.Given(Request.Create()
