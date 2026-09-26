@@ -279,6 +279,10 @@ foreach (var position in positions.Items)
 
 // List fills
 var fills = await client.Portfolio.ListFillsAsync();
+
+// FCM-only resting order summary
+var resting = await client.Portfolio.GetTotalRestingOrderValueAsync();
+Console.WriteLine($"Resting order value: {resting.TotalRestingOrderValue} cents");
 ```
 
 ### Historical Data

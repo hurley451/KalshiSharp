@@ -58,6 +58,18 @@ internal sealed class PortfolioClient : IPortfolioClient
     }
 
     /// <inheritdoc />
+    public Task<TotalRestingOrderValueResponse> GetTotalRestingOrderValueAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/summary/total_resting_order_value"
+        };
+        return _httpClient.SendAsync<TotalRestingOrderValueResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<TargetBalanceAllocationResponse> GetTargetBalanceAllocationAsync(
         CancellationToken cancellationToken = default)
     {
