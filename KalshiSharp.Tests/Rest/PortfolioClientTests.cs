@@ -547,6 +547,163 @@ public sealed class PortfolioClientTests : IDisposable
     }
 
     [Fact]
+    public async Task TransferBetweenSubaccountsAsync_SendsCurrentRequestShape()
+    {
+        var transferId = Guid.Parse("3c90c3cc-0d44-4b50-8888-8dd25736052a");
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/subaccounts/transfer")
+                .UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("{}"));
+
+        await _portfolioClient.TransferBetweenSubaccountsAsync(new CreateSubaccountTransferRequest
+        {
+            ClientTransferId = transferId,
+            FromSubaccount = 0,
+            ToSubaccount = 63,
+            AmountCents = 12_345,
+            ExchangeIndex = 2
+        });
+
+        _server.LogEntries.Should().ContainSingle();
+        var requestBody = _server.LogEntries[0].RequestMessage!.Body;
+        requestBody.Should().NotBeNull();
+        using var body = JsonDocument.Parse(requestBody!);
+        body.RootElement.GetProperty("client_transfer_id").GetString().Should().Be(transferId.ToString());
+        body.RootElement.GetProperty("from_subaccount").GetInt32().Should().Be(0);
+        body.RootElement.GetProperty("to_subaccount").GetInt32().Should().Be(63);
+        body.RootElement.GetProperty("amount_cents").GetInt64().Should().Be(12_345);
+        body.RootElement.GetProperty("exchange_index").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task TransferBetweenSubaccountsAsync_OmitsOptionalExchangeIndex()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/subaccounts/transfer")
+                .UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("{}"));
+
+        await _portfolioClient.TransferBetweenSubaccountsAsync(new CreateSubaccountTransferRequest
+        {
+            ClientTransferId = Guid.Parse("3c90c3cc-0d44-4b50-8888-8dd25736052a"),
+            FromSubaccount = 0,
+            ToSubaccount = 1,
+            AmountCents = 1
+        });
+
+        var requestBody = _server.LogEntries[0].RequestMessage!.Body;
+        requestBody.Should().NotBeNull();
+        using var body = JsonDocument.Parse(requestBody!);
+        body.RootElement.TryGetProperty("exchange_index", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TransferBetweenSubaccountsAsync_ValidatesDocumentedBoundaries()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _portfolioClient.TransferBetweenSubaccountsAsync(new CreateSubaccountTransferRequest
+            {
+                ClientTransferId = Guid.Empty,
+                FromSubaccount = 0,
+                ToSubaccount = 1,
+                AmountCents = 1
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.TransferBetweenSubaccountsAsync(new CreateSubaccountTransferRequest
+            {
+                ClientTransferId = Guid.NewGuid(),
+                FromSubaccount = -1,
+                ToSubaccount = 1,
+                AmountCents = 1
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.TransferBetweenSubaccountsAsync(new CreateSubaccountTransferRequest
+            {
+                ClientTransferId = Guid.NewGuid(),
+                FromSubaccount = 0,
+                ToSubaccount = 64,
+                AmountCents = 1
+            }));
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _portfolioClient.TransferBetweenSubaccountsAsync(new CreateSubaccountTransferRequest
+            {
+                ClientTransferId = Guid.NewGuid(),
+                FromSubaccount = 1,
+                ToSubaccount = 1,
+                AmountCents = 1
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.TransferBetweenSubaccountsAsync(new CreateSubaccountTransferRequest
+            {
+                ClientTransferId = Guid.NewGuid(),
+                FromSubaccount = 0,
+                ToSubaccount = 1,
+                AmountCents = 0
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.TransferBetweenSubaccountsAsync(new CreateSubaccountTransferRequest
+            {
+                ClientTransferId = Guid.NewGuid(),
+                FromSubaccount = 0,
+                ToSubaccount = 1,
+                AmountCents = 1,
+                ExchangeIndex = -1
+            }));
+    }
+
+    [Fact]
+    public async Task ListSubaccountTransfersAsync_ParsesTransfersAndPagination()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/subaccounts/transfers")
+                .WithParam("limit", "1000")
+                .WithParam("cursor", "page-2")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "transfers": [
+                        {
+                            "transfer_id": "transfer-1",
+                            "from_subaccount": 0,
+                            "to_subaccount": 2,
+                            "amount_cents": 2147483648,
+                            "created_ts": 1755600000,
+                            "exchange_index": 3
+                        }
+                    ],
+                    "cursor": "next-page"
+                }
+                """));
+
+        var result = await _portfolioClient.ListSubaccountTransfersAsync(new SubaccountTransferQuery
+        {
+            Limit = 1000,
+            Cursor = "page-2"
+        });
+
+        result.Items.Should().ContainSingle();
+        result.Cursor.Should().Be("next-page");
+        result.HasMore.Should().BeTrue();
+        result.Items[0].TransferId.Should().Be("transfer-1");
+        result.Items[0].FromSubaccount.Should().Be(0);
+        result.Items[0].ToSubaccount.Should().Be(2);
+        result.Items[0].AmountCents.Should().Be(2_147_483_648);
+        result.Items[0].CreatedTs.Should().Be(1755600000);
+        result.Items[0].ExchangeIndex.Should().Be(3);
+    }
+
+    [Fact]
     public async Task GetTotalRestingOrderValueAsync_ParsesExchangeBreakdown()
     {
         _server.Given(Request.Create()
@@ -688,5 +845,97 @@ public sealed class PortfolioClientTests : IDisposable
 
         await _portfolioClient.ListPositionsAsync(new PositionQuery { ExchangeIndex = 0 });
         await _portfolioClient.ListFillsAsync(new FillQuery { ExchangeIndex = 0 });
+    }
+
+    [Fact]
+    public async Task ListSettlementsAsync_ParsesCurrentPayloadAndQuery()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/settlements")
+                .WithParam("limit", "500")
+                .WithParam("cursor", "settlement-page")
+                .WithParam("ticker", "MARKET-1")
+                .WithParam("event_ticker", "EVENT-1")
+                .WithParam("min_ts", "1755600000")
+                .WithParam("max_ts", "1755686400")
+                .WithParam("subaccount", "63")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "settlements": [
+                        {
+                            "ticker": "MARKET-1",
+                            "exchange_index": 2,
+                            "event_ticker": "EVENT-1",
+                            "market_result": "yes",
+                            "yes_count_fp": "10.00",
+                            "yes_total_cost_dollars": "0.5600",
+                            "no_count_fp": "0.00",
+                            "no_total_cost_dollars": "0.0000",
+                            "revenue": 2147483648,
+                            "settled_time": "2026-08-19T12:00:00Z",
+                            "fee_cost": "0.3400",
+                            "value": 100
+                        }
+                    ],
+                    "cursor": null
+                }
+                """));
+
+        var result = await _portfolioClient.ListSettlementsAsync(new SettlementQuery
+        {
+            Limit = 500,
+            Cursor = "settlement-page",
+            Ticker = "MARKET-1",
+            EventTicker = "EVENT-1",
+            MinTime = DateTimeOffset.FromUnixTimeSeconds(1755600000),
+            MaxTime = DateTimeOffset.FromUnixTimeSeconds(1755686400),
+            Subaccount = 63
+        });
+
+        result.Items.Should().ContainSingle();
+        result.HasMore.Should().BeFalse();
+        result.Items[0].Ticker.Should().Be("MARKET-1");
+        result.Items[0].ExchangeIndex.Should().Be(2);
+        result.Items[0].EventTicker.Should().Be("EVENT-1");
+        result.Items[0].MarketResult.Should().Be(OrderSide.Yes);
+        result.Items[0].YesCountFp.Should().Be("10.00");
+        result.Items[0].YesTotalCostDollars.Should().Be("0.5600");
+        result.Items[0].NoCountFp.Should().Be("0.00");
+        result.Items[0].NoTotalCostDollars.Should().Be("0.0000");
+        result.Items[0].Revenue.Should().Be(2_147_483_648);
+        result.Items[0].SettledTime.Should().Be(DateTimeOffset.Parse("2026-08-19T12:00:00Z", CultureInfo.InvariantCulture));
+        result.Items[0].FeeCost.Should().Be("0.3400");
+        result.Items[0].Value.Should().Be(100);
+    }
+
+    [Fact]
+    public async Task ListSettlementsAsync_OmitsSubaccountByDefault()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/settlements")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"settlements":[],"cursor":null}"""));
+
+        await _portfolioClient.ListSettlementsAsync();
+
+        _server.LogEntries.Should().ContainSingle();
+        _server.LogEntries[0].RequestMessage!.Query.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public void PortfolioHistoryQueries_ValidateRanges()
+    {
+        var invalidSettlementLimit = () => new SettlementQuery { Limit = 0 }.ToQueryString();
+        var invalidSettlementSubaccount = () => new SettlementQuery { Subaccount = 64 }.ToQueryString();
+        var invalidTransferLimit = () => new SubaccountTransferQuery { Limit = 1001 }.ToQueryString();
+
+        invalidSettlementLimit.Should().Throw<ArgumentOutOfRangeException>();
+        invalidSettlementSubaccount.Should().Throw<ArgumentOutOfRangeException>();
+        invalidTransferLimit.Should().Throw<ArgumentOutOfRangeException>();
     }
 }

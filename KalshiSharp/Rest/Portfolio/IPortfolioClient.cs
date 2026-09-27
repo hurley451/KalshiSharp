@@ -23,6 +23,18 @@ public interface IPortfolioClient
     Task<SubaccountBalancesResponse> GetSubaccountBalancesAsync(CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support all-subaccount balances.");
 
+    /// <summary>Transfers funds between two subaccounts.</summary>
+    Task TransferBetweenSubaccountsAsync(
+        CreateSubaccountTransferRequest request,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support subaccount transfers.");
+
+    /// <summary>Lists subaccount transfer history.</summary>
+    Task<SubaccountTransfersResponse> ListSubaccountTransfersAsync(
+        SubaccountTransferQuery? query = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support subaccount transfer history.");
+
     /// <summary>Gets the total value of resting orders and exchange-index breakdowns.</summary>
     Task<TotalRestingOrderValueResponse> GetTotalRestingOrderValueAsync(CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support resting order value summaries.");
@@ -79,4 +91,10 @@ public interface IPortfolioClient
     /// <summary>Lists fills using the current query contract.</summary>
     Task<FillsResponse> ListFillsAsync(FillQuery query, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support the current fill query contract.");
+
+    /// <summary>Lists settlement history using the current query contract.</summary>
+    Task<SettlementsResponse> ListSettlementsAsync(
+        SettlementQuery? query = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support settlement history.");
 }

@@ -280,6 +280,28 @@ foreach (var position in positions.Items)
 // List fills
 var fills = await client.Portfolio.ListFillsAsync();
 
+// List settlements across all subaccounts, or scope to one subaccount.
+var settlements = await client.Portfolio.ListSettlementsAsync(new SettlementQuery
+{
+    Subaccount = 0,
+    Limit = 100
+});
+
+// Transfer funds between subaccounts on a specific exchange shard.
+await client.Portfolio.TransferBetweenSubaccountsAsync(new CreateSubaccountTransferRequest
+{
+    ClientTransferId = Guid.NewGuid(),
+    FromSubaccount = 0,
+    ToSubaccount = 2,
+    AmountCents = 5_000,
+    ExchangeIndex = 0
+});
+
+var transferHistory = await client.Portfolio.ListSubaccountTransfersAsync(new SubaccountTransferQuery
+{
+    Limit = 100
+});
+
 // FCM-only resting order summary
 var resting = await client.Portfolio.GetTotalRestingOrderValueAsync();
 Console.WriteLine($"Resting order value: {resting.TotalRestingOrderValue} cents");
