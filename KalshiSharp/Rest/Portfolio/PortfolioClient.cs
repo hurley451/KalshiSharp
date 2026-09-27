@@ -58,6 +58,36 @@ internal sealed class PortfolioClient : IPortfolioClient
     }
 
     /// <inheritdoc />
+    public Task TransferBetweenSubaccountsAsync(
+        CreateSubaccountTransferRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateSubaccountTransfer(request);
+
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Post,
+            Path = $"{BasePath}/subaccounts/transfer",
+            Content = request
+        };
+        return _httpClient.SendAsync(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<SubaccountTransfersResponse> ListSubaccountTransfersAsync(
+        SubaccountTransferQuery? query = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/subaccounts/transfers{query?.ToQueryString()}"
+        };
+        return _httpClient.SendAsync<SubaccountTransfersResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<TotalRestingOrderValueResponse> GetTotalRestingOrderValueAsync(
         CancellationToken cancellationToken = default)
     {
@@ -162,6 +192,19 @@ internal sealed class PortfolioClient : IPortfolioClient
         return _httpClient.SendAsync<FillsResponse>(httpRequest, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task<SettlementsResponse> ListSettlementsAsync(
+        SettlementQuery? query = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/settlements{query?.ToQueryString()}"
+        };
+        return _httpClient.SendAsync<SettlementsResponse>(request, cancellationToken);
+    }
+
     private static string BuildPositionsQueryString(
         string? cursor,
         int? limit,
@@ -253,6 +296,36 @@ internal sealed class PortfolioClient : IPortfolioClient
             throw new ArgumentException(
                 "Target balance allocation percentages must total 100, or be empty to disable automatic rebalancing.",
                 nameof(request));
+        }
+    }
+
+    private static void ValidateSubaccountTransfer(CreateSubaccountTransferRequest request)
+    {
+        if (request.ClientTransferId == Guid.Empty)
+        {
+            throw new ArgumentException("Client transfer ID must be a non-empty UUID.", nameof(request));
+        }
+
+        SettlementQuery.ValidateSubaccount(request.FromSubaccount);
+        SettlementQuery.ValidateSubaccount(request.ToSubaccount);
+
+        if (request.FromSubaccount == request.ToSubaccount)
+        {
+            throw new ArgumentException("Source and destination subaccounts must differ.", nameof(request));
+        }
+
+        if (request.AmountCents <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                "Transfer amount must be greater than zero cents.");
+        }
+
+        if (request.ExchangeIndex is < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                "Exchange index must be nonnegative.");
         }
     }
 }
