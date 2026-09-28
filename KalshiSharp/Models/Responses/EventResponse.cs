@@ -81,8 +81,8 @@ public sealed record EventResponse
 
     /// <summary>
     /// Deprecated broker-availability field retained for compatibility.
-    /// Kalshi no longer populates this field and currently returns false.
-    /// Do not use it as an availability signal.
+    /// Kalshi removed this field from event payloads after it stopped being meaningful.
+    /// Omitted values deserialize as <see langword="false"/>. Do not use this member as an availability signal.
     /// </summary>
     public bool AvailableOnBrokers { get; init; }
 
