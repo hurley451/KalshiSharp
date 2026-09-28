@@ -574,6 +574,35 @@ public sealed class EventClientTests : IDisposable
     }
 
     [Fact]
+    public async Task ListEventsAsync_WhenBrokerAvailabilityRemoved_DefaultsCompatibilityMemberToFalse()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/events")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "events": [
+                        {
+                            "event_ticker": "EVENT-REMOVED-FIELD",
+                            "title": "Event without retired broker availability",
+                            "category": "finance",
+                            "collateral_return_type": "binary"
+                        }
+                    ],
+                    "cursor": null
+                }
+                """));
+
+        var result = await _client.ListEventsAsync();
+
+        result.Items.Should().ContainSingle()
+            .Which.AvailableOnBrokers.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task GetEventAsync_DefaultResponse_PreservesTopLevelMarketsAndMetadata()
     {
         const string eventTicker = "EVENT-CURRENT";
