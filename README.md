@@ -221,6 +221,15 @@ foreach (var point in weather.Timeseries)
 
 var calibrations = await liveData.GetWeatherIndexCalibrationsAsync("miami");
 Console.WriteLine($"Calibration records: {calibrations.Calibrations.Count}");
+
+var milestoneData = await liveData.GetLiveDataAsync("milestone-id", new LiveDataQuery
+{
+    IncludePlayerStats = true
+});
+Console.WriteLine($"{milestoneData.LiveData.Type}: {milestoneData.LiveData.MilestoneId}");
+
+var eventData = await liveData.GetEventLiveDataAsync("EVENT-TICKER");
+Console.WriteLine($"{eventData.LiveData.Type}: {eventData.LiveData.DefaultRange}");
 ```
 
 ### Place and Cancel Orders
