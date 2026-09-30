@@ -13,6 +13,124 @@ namespace KalshiSharp.Tests.Rest;
 public sealed class LiveDataClientTests
 {
     [Fact]
+    public async Task GetLiveDataAsync_UsesCurrentMilestoneRouteAndPlayerStatsQuery()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = CreateLiveDataResponse()
+        };
+        var client = new LiveDataClient(httpClient);
+
+        var result = await client.GetLiveDataAsync("milestone/1", new LiveDataQuery
+        {
+            IncludePlayerStats = true
+        });
+
+        httpClient.LastRequest!.Path.Should().Be(
+            "/trade-api/v2/live_data/milestone/milestone%2F1?include_player_stats=true");
+        result.LiveData.Type.Should().Be("basketball");
+        result.LiveData.Details.GetProperty("score").GetInt32().Should().Be(101);
+    }
+
+    [Fact]
+    public async Task GetLiveDataAsync_UsesLegacyTypedRoute()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = CreateLiveDataResponse()
+        };
+        var client = new LiveDataClient(httpClient);
+
+        await client.GetLiveDataAsync("sports/game", "milestone/1", new LiveDataQuery
+        {
+            IncludePlayerStats = false
+        });
+
+        httpClient.LastRequest!.Path.Should().Be(
+            "/trade-api/v2/live_data/sports%2Fgame/milestone/milestone%2F1?include_player_stats=false");
+    }
+
+    [Fact]
+    public async Task GetLiveDataBatchAsync_ParsesFlexiblePayloads()
+    {
+        var details = JsonSerializer.Deserialize<JsonElement>("""{"price":"1.2345","provider":"pyth"}""");
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new LiveDataBatchResponse
+            {
+                LiveDatas =
+                [
+                    new LiveDataPayload
+                    {
+                        Type = "pyth",
+                        Details = details,
+                        MilestoneId = "milestone-1"
+                    }
+                ]
+            }
+        };
+        var client = new LiveDataClient(httpClient);
+
+        var result = await client.GetLiveDataBatchAsync();
+
+        httpClient.LastRequest!.Path.Should().Be("/trade-api/v2/live_data/batch");
+        result.LiveDatas.Should().ContainSingle().Which.Details.GetProperty("provider").GetString().Should().Be("pyth");
+    }
+
+    [Fact]
+    public async Task GetEventLiveDataAsync_PreservesEventMetadataAndDetails()
+    {
+        var details = JsonSerializer.Deserialize<JsonElement>("""{"series":[{"t":1,"v":"0.5600"}]}""");
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new EventLiveDataResponse
+            {
+                LiveData = new EventLiveDataPayload
+                {
+                    Type = "crypto_price",
+                    Details = details,
+                    IsHistorical = true,
+                    DefaultRange = "1d",
+                    RangeOptions = ["1h", "1d"]
+                }
+            }
+        };
+        var client = new LiveDataClient(httpClient);
+
+        var result = await client.GetEventLiveDataAsync("EVENT/1");
+
+        httpClient.LastRequest!.Path.Should().Be("/trade-api/v2/live_data/events/EVENT%2F1");
+        result.LiveData.IsHistorical.Should().BeTrue();
+        result.LiveData.RangeOptions.Should().Contain("1d");
+        result.LiveData.Details.GetProperty("series")[0].GetProperty("v").GetString().Should().Be("0.5600");
+    }
+
+    [Fact]
+    public async Task GetGameStatsAsync_UsesGameStatsRoute()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = JsonSerializer.Deserialize<GameStatsResponse>(
+                """
+                {
+                  "pbp": {
+                    "periods": [
+                      { "events": [ { "clock": "12:00" } ] }
+                    ]
+                  }
+                }
+                """,
+                KalshiJsonOptions.Default)!
+        };
+        var client = new LiveDataClient(httpClient);
+
+        var result = await client.GetGameStatsAsync("milestone/1");
+
+        httpClient.LastRequest!.Path.Should().Be("/trade-api/v2/live_data/milestone/milestone%2F1/game_stats");
+        result.Pbp.GetProperty("periods")[0].GetProperty("events")[0].GetProperty("clock").GetString().Should().Be("12:00");
+    }
+
+    [Fact]
     public async Task GetWeatherIndexAsync_EmitsWindowAndDetailedQuery()
     {
         var httpClient = new RecordingHttpClient
@@ -155,6 +273,20 @@ public sealed class LiveDataClientTests
         await Assert.ThrowsAsync<ArgumentException>(() => client.GetWeatherIndexCalibrationsAsync(city));
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task MilestoneEndpoints_RejectMissingIdentifiers(string value)
+    {
+        var client = new LiveDataClient(new RecordingHttpClient { Response = CreateLiveDataResponse() });
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetLiveDataAsync(value));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetLiveDataAsync("type", value));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetLiveDataAsync(value, "milestone"));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetEventLiveDataAsync(value));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetGameStatsAsync(value));
+    }
+
     [Fact]
     public void WeatherIndexQuery_AllowsTrailingWindowAndFalseDetail()
     {
@@ -177,6 +309,56 @@ public sealed class LiveDataClientTests
         new WeatherIndexQuery { LastSec = 0 }
             .Invoking(query => query.ToQueryString())
             .Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData("live_data")]
+    public void LiveDataResponse_RejectsMissingRequiredEnvelopeMember(string memberName)
+    {
+        var json = JsonNode.Parse(
+            """
+            {
+              "live_data": {
+                "type": "basketball",
+                "details": {},
+                "milestone_id": "milestone-1"
+              }
+            }
+            """
+        )!.AsObject();
+        json.Remove(memberName);
+
+        Action act = () => JsonSerializer.Deserialize<LiveDataResponse>(
+            json.ToJsonString(),
+            KalshiJsonOptions.Default);
+
+        act.Should().Throw<JsonException>();
+    }
+
+    [Theory]
+    [InlineData("type")]
+    [InlineData("details")]
+    [InlineData("milestone_id")]
+    public void LiveDataPayload_RejectsMissingRequiredMembers(string memberName)
+    {
+        var json = JsonNode.Parse(
+            """
+            {
+              "live_data": {
+                "type": "basketball",
+                "details": {},
+                "milestone_id": "milestone-1"
+              }
+            }
+            """
+        )!.AsObject();
+        json["live_data"]!.AsObject().Remove(memberName);
+
+        Action act = () => JsonSerializer.Deserialize<LiveDataResponse>(
+            json.ToJsonString(),
+            KalshiJsonOptions.Default);
+
+        act.Should().Throw<JsonException>();
     }
 
     [Theory]
@@ -235,6 +417,16 @@ public sealed class LiveDataClientTests
         Units = "fahrenheit",
         Timeseries = [],
         ConfigVersion = string.Empty
+    };
+
+    private static LiveDataResponse CreateLiveDataResponse() => new()
+    {
+        LiveData = new LiveDataPayload
+        {
+            Type = "basketball",
+            Details = JsonSerializer.Deserialize<JsonElement>("""{"score":101}"""),
+            MilestoneId = "milestone-1"
+        }
     };
 
     private sealed class RecordingHttpClient : IKalshiHttpClient
