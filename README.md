@@ -263,6 +263,17 @@ var cancelled = await ordersV2.CancelOrderAsync(order.OrderId, new CancelOrderQu
     MarketTicker = request.Ticker
 });
 
+// Preserve queue priority while changing only the expiration.
+var amended = await ordersV2.AmendOrderAsync(order.OrderId, new AmendOrderRequestV2
+{
+    Ticker = request.Ticker,
+    Side = request.Side,
+    Price = request.Price,
+    Count = order.RemainingCount,
+    ExpirationTime = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds(),
+    ExchangeIndex = request.ExchangeIndex
+});
+
 // Explicitly cancel up to 10,000 resting event orders across every shard and subaccount.
 // If more than 10,000 match, Kalshi selects the cancelled orders arbitrarily.
 // Newly placed matching orders may also be cancelled during the minute after this request.

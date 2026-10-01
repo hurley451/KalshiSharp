@@ -692,6 +692,48 @@ public sealed class OrderClientTests : IDisposable
         act.Should().Throw<ArgumentException>();
     }
 
+    [Theory]
+    [InlineData(0L)]
+    [InlineData(1790995200L)]
+    public async Task AmendOrderV2Async_CanUpdateExpirationTime(long expirationTime)
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/events/orders/order-v2/amend")
+                .WithParam("subaccount", "0")
+                .WithBody(body => body is not null
+                    && body.Contains("\"ticker\":\"MARKET-ABC\"")
+                    && body.Contains("\"side\":\"bid\"")
+                    && body.Contains("\"price\":\"0.5700\"")
+                    && body.Contains("\"count\":\"12.00\"")
+                    && body.Contains($"\"expiration_time\":{expirationTime.ToString(CultureInfo.InvariantCulture)}")
+                    && body.Contains("\"exchange_index\":1"))
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "order_id": "order-v2",
+                    "remaining_count": "12.00",
+                    "ts_ms": 1755600003123
+                }
+                """));
+
+        var result = await _clientV2.AmendOrderAsync("order-v2", new AmendOrderRequestV2
+        {
+            Ticker = "MARKET-ABC",
+            Side = OrderBookSide.Bid,
+            Price = "0.5700",
+            Count = "12.00",
+            ExpirationTime = expirationTime,
+            ExchangeIndex = 1
+        }, subaccount: 0);
+
+        result.OrderId.Should().Be("order-v2");
+        result.RemainingCount.Should().Be("12.00");
+        result.TsMs.Should().Be(1755600003123);
+    }
+
     [Fact]
     public async Task DecreaseOrderV2Async_ReduceBy_UsesCurrentContract()
     {

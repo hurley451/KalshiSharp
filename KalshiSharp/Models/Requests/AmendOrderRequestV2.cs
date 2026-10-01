@@ -39,6 +39,12 @@ public sealed record AmendOrderRequestV2
     public string? UpdatedClientOrderId { get; init; }
 
     /// <summary>
+    /// Optional Unix timestamp in seconds for the amended order expiration.
+    /// Omit to preserve the current expiration or set to 0 to clear it.
+    /// </summary>
+    public long? ExpirationTime { get; init; }
+
+    /// <summary>
     /// Identifier for an exchange shard. Defaults to 0 if unspecified.
     /// </summary>
     public int? ExchangeIndex { get; init; }
