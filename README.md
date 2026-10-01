@@ -280,7 +280,10 @@ var balance = await client.Portfolio.GetBalanceAsync();
 Console.WriteLine($"Balance: ${balance.BalanceDollars}");
 
 // List positions
-var positions = await client.Portfolio.ListPositionsAsync();
+var positions = await client.Portfolio.ListPositionsAsync(new PositionQuery
+{
+    SettlementStatus = PositionSettlementStatus.Unsettled
+});
 foreach (var position in positions.Items)
 {
     Console.WriteLine($"{position.Ticker}: {position.PositionFp} contracts");
