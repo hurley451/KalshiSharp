@@ -1,5 +1,6 @@
 using System.Globalization;
 using KalshiSharp.Models.Common;
+using KalshiSharp.Models.Enums;
 
 namespace KalshiSharp.Models.Requests;
 
@@ -24,6 +25,12 @@ public sealed record PositionQuery : PaginationParameters
     /// <summary>Filter by exchange index when shard-aware reads are active.</summary>
     public int? ExchangeIndex { get; init; }
 
+    /// <summary>
+    /// Filter live positions by settlement state. Omission returns unsettled positions.
+    /// Use the historical positions endpoint for archived settled positions.
+    /// </summary>
+    public PositionSettlementStatus? SettlementStatus { get; init; }
+
     /// <summary>Builds the query string.</summary>
     public string ToQueryString()
     {
@@ -39,6 +46,10 @@ public sealed record PositionQuery : PaginationParameters
         {
             builder.Append("exchange_index", ExchangeIndex.Value.ToString(CultureInfo.InvariantCulture));
         }
+        if (SettlementStatus.HasValue)
+        {
+            builder.Append("settlement_status", ToWireValue(SettlementStatus.Value));
+        }
 
         if (CountFilter is { Count: > 0 })
         {
@@ -47,4 +58,13 @@ public sealed record PositionQuery : PaginationParameters
 
         return builder.Build();
     }
+
+    private static string ToWireValue(PositionSettlementStatus status) =>
+        status switch
+        {
+            PositionSettlementStatus.Unsettled => "unsettled",
+            PositionSettlementStatus.Settled => "settled",
+            PositionSettlementStatus.All => "all",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unsupported position settlement status.")
+        };
 }

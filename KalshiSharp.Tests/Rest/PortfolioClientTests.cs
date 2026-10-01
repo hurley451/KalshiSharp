@@ -847,6 +847,33 @@ public sealed class PortfolioClientTests : IDisposable
         await _portfolioClient.ListFillsAsync(new FillQuery { ExchangeIndex = 0 });
     }
 
+    [Theory]
+    [InlineData(PositionSettlementStatus.Unsettled, "unsettled")]
+    [InlineData(PositionSettlementStatus.Settled, "settled")]
+    [InlineData(PositionSettlementStatus.All, "all")]
+    public async Task ListPositionsAsync_IncludesSettlementStatusFilter(
+        PositionSettlementStatus settlementStatus,
+        string expectedQueryValue)
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/positions")
+                .WithParam("settlement_status", expectedQueryValue)
+                .WithParam("count_filter", "position,total_traded")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"market_positions":[],"event_positions":[],"cursor":null}"""));
+
+        var result = await _portfolioClient.ListPositionsAsync(new PositionQuery
+        {
+            SettlementStatus = settlementStatus,
+            CountFilter = ["position", "total_traded"]
+        });
+
+        result.Items.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task ListSettlementsAsync_ParsesCurrentPayloadAndQuery()
     {
