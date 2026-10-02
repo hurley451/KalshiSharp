@@ -141,7 +141,10 @@ public sealed record MarketResponse
     /// <summary>Open interest as a fixed-point count.</summary>
     public string? OpenInterestFp { get; init; }
 
-    /// <summary>Current liquidity in dollars.</summary>
+    /// <summary>
+    /// Deprecated compatibility field for the removed market <c>liquidity_dollars</c> payload value.
+    /// Use top-of-book fixed-point sizes such as <see cref="YesBidSizeFp"/> and <see cref="YesAskSizeFp"/> instead.
+    /// </summary>
     public string? LiquidityDollars { get; init; }
 
     /// <summary>Notional value in dollars.</summary>

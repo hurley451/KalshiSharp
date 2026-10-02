@@ -640,6 +640,7 @@ public sealed class EventClientTests : IDisposable
 
         result.Markets.Should().ContainSingle();
         result.Markets![0].YesBidDollars.Should().Be("0.5000");
+        result.Markets[0].LiquidityDollars.Should().BeNull();
         result.SettlementSources.Should().ContainSingle().Which.Name.Should().Be("Source");
         result.ProductMetadata!.Cadence.Should().Be("daily");
         result.ExchangeIndex.Should().Be(1);
