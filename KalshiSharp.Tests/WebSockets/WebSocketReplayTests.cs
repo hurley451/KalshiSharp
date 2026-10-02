@@ -471,6 +471,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
               "type": "orderbook_delta",
               "seq": 3,
+              "sending_ts_ms": 1787155200999,
               "msg": {
                 "market_ticker": "KXTEST-26AUG19",
                 "market_id": "9b0f6b43-5b68-4f9f-9f02-9a2d1b8ac1a1",
@@ -490,6 +491,8 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         update.Message.DeltaFp.Should().Be("-54.00");
         update.Message.LastUpdateReason.Should().Be("PostOnlyCrossCancel");
         update.Message.TsMs.Should().Be(1787155200123);
+        update.SendingTsMs.Should().Be(1787155200999);
+        update.SendingTimestampUtc.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1787155200999));
     }
 
     [Fact]
@@ -498,6 +501,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         const string orderJson = """
             {
               "type": "user_order",
+              "sending_ts_ms": 1787155200999,
               "msg": {
                 "order_id": "order-current",
                 "ticker": "KXTEST-26AUG19",
@@ -558,6 +562,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         order.Message.IsYes.Should().BeTrue();
         order.Message.TakerFillCostDollars.Should().Be("2.5950");
         order.Message.LastUpdatedTsMs.Should().Be(1787155200456);
+        order.SendingTsMs.Should().Be(1787155200999);
         fill.Message.CountFp.Should().Be("6.00");
         fill.Message.OutcomeSide.Should().Be(OrderSide.Yes);
         fill.Message.ExchangeIndex.Should().Be(1);
@@ -682,6 +687,9 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         var unknownJson = """
             {
                 "type": "future_feature",
+                "sid": 12,
+                "seq": 34,
+                "sending_ts_ms": 1787155200999,
                 "data": {"foo": "bar"}
             }
             """;
@@ -712,6 +720,10 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         var unknown = messages[0].Should().BeOfType<UnknownMessage>().Subject;
         unknown.RawType.Should().Be("future_feature");
         unknown.RawPayload.Should().NotBeNull();
+        unknown.Sid.Should().Be(12);
+        unknown.Sequence.Should().Be(34);
+        unknown.SendingTsMs.Should().Be(1787155200999);
+        unknown.RawPayload!.Value.GetProperty("sending_ts_ms").GetInt64().Should().Be(1787155200999);
     }
 
     [Fact]
