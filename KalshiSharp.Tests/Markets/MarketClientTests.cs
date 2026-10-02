@@ -547,6 +547,7 @@ public sealed class MarketClientTests : IDisposable
         var result = await _client.GetMarketAsync(ticker);
 
         result.YesBidDollars.Should().Be("0.5600");
+        result.LiquidityDollars.Should().BeNull();
         result.VolumeFp.Should().Be("10.00");
         result.PriceLevelStructure.Should().Be("linear_cent");
         result.PriceRanges.Should().ContainSingle().Which.Step.Should().Be("0.0100");
