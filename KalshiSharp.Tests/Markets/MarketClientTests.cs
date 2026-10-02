@@ -535,6 +535,8 @@ public sealed class MarketClientTests : IDisposable
                         "status": "active",
                         "yes_bid_dollars": "0.5600",
                         "volume_fp": "10.00",
+                        "settlement_bounds_type": "floor",
+                        "settlement_floor_dollars": "0.2500",
                         "price_level_structure": "linear_cent",
                         "price_ranges": [{ "start": "0.0000", "end": "1.0000", "step": "0.0100" }],
                         "strike_type": "custom",
@@ -549,6 +551,8 @@ public sealed class MarketClientTests : IDisposable
         result.YesBidDollars.Should().Be("0.5600");
         result.LiquidityDollars.Should().BeNull();
         result.VolumeFp.Should().Be("10.00");
+        result.SettlementBoundsType.Should().Be("floor");
+        result.SettlementFloorDollars.Should().Be("0.2500");
         result.PriceLevelStructure.Should().Be("linear_cent");
         result.PriceRanges.Should().ContainSingle().Which.Step.Should().Be("0.0100");
         result.StrikeType.Should().Be("custom");

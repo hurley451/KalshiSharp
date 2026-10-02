@@ -90,6 +90,8 @@ public sealed class HistoricalClientTests : IDisposable
                     "title": "Archived market",
                     "status": "finalized",
                     "yes_bid_dollars": "0.4325",
+                    "settlement_bounds_type": "floor",
+                    "settlement_floor_dollars": "0.2500",
                     "price_level_structure": "deci_cent",
                     "price_ranges": [{"start":"0.0000","end":"1.0000","step":"0.0010"}],
                     "exchange_index": 1
@@ -107,7 +109,8 @@ public sealed class HistoricalClientTests : IDisposable
                     "event_ticker": "KXTEST-26AUG",
                     "title": "Archived market",
                     "status": "finalized",
-                    "yes_bid_dollars": "0.4325"
+                    "yes_bid_dollars": "0.4325",
+                    "settlement_bounds_type": "default"
                   }
                 }
                 """));
@@ -118,7 +121,11 @@ public sealed class HistoricalClientTests : IDisposable
         markets.Markets.Should().ContainSingle();
         markets.Markets[0].PriceRanges.Should().ContainSingle();
         markets.Markets[0].ExchangeIndex.Should().Be(1);
+        markets.Markets[0].SettlementBoundsType.Should().Be("floor");
+        markets.Markets[0].SettlementFloorDollars.Should().Be("0.2500");
         market.YesBidDollars.Should().Be("0.4325");
+        market.SettlementBoundsType.Should().Be("default");
+        market.SettlementFloorDollars.Should().BeNull();
     }
 
     [Fact]
