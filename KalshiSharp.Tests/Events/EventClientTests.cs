@@ -631,6 +631,8 @@ public sealed class EventClientTests : IDisposable
                         "title": "Current market",
                         "status": "active",
                         "yes_bid_dollars": "0.5000",
+                        "settlement_bounds_type": "floor",
+                        "settlement_floor_dollars": "0.2500",
                         "exchange_index": 1
                     }]
                 }
@@ -641,6 +643,8 @@ public sealed class EventClientTests : IDisposable
         result.Markets.Should().ContainSingle();
         result.Markets![0].YesBidDollars.Should().Be("0.5000");
         result.Markets[0].LiquidityDollars.Should().BeNull();
+        result.Markets[0].SettlementBoundsType.Should().Be("floor");
+        result.Markets[0].SettlementFloorDollars.Should().Be("0.2500");
         result.SettlementSources.Should().ContainSingle().Which.Name.Should().Be("Source");
         result.ProductMetadata!.Cadence.Should().Be("daily");
         result.ExchangeIndex.Should().Be(1);

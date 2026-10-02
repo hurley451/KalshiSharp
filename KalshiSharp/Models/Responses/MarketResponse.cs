@@ -162,6 +162,12 @@ public sealed record MarketResponse
     /// <summary>Settlement value in dollars.</summary>
     public string? SettlementValueDollars { get; init; }
 
+    /// <summary>Settlement-bounds mode, such as <c>default</c> or <c>floor</c>.</summary>
+    public string? SettlementBoundsType { get; init; }
+
+    /// <summary>Lowest possible YES-side settlement value in dollars when settlement bounds use a floor.</summary>
+    public string? SettlementFloorDollars { get; init; }
+
     /// <summary>Current price-level structure identifier.</summary>
     public string? PriceLevelStructure { get; init; }
 
