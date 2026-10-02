@@ -29,10 +29,20 @@ public abstract record WebSocketMessage
     [JsonPropertyName("ts")]
     public long? Timestamp { get; init; }
 
+    /// <summary>Server send timestamp in Unix milliseconds.</summary>
+    [JsonPropertyName("sending_ts_ms")]
+    public long? SendingTsMs { get; init; }
+
     /// <summary>Gets the legacy timestamp as UTC.</summary>
     [JsonIgnore]
     public DateTimeOffset? TimestampUtc => Timestamp.HasValue
         ? DateTimeOffset.FromUnixTimeMilliseconds(Timestamp.Value)
+        : null;
+
+    /// <summary>Gets the server send timestamp as UTC.</summary>
+    [JsonIgnore]
+    public DateTimeOffset? SendingTimestampUtc => SendingTsMs.HasValue
+        ? DateTimeOffset.FromUnixTimeMilliseconds(SendingTsMs.Value)
         : null;
 }
 

@@ -29,6 +29,20 @@ public sealed record UnknownMessage : WebSocketMessage
     public static UnknownMessage Create(string rawType, JsonElement payload) => new()
     {
         RawType = rawType,
-        RawPayload = payload
+        RawPayload = payload,
+        Sid = TryGetInt32(payload, "sid") ?? 0,
+        Sequence = TryGetInt64(payload, "seq"),
+        Timestamp = TryGetInt64(payload, "ts"),
+        SendingTsMs = TryGetInt64(payload, "sending_ts_ms")
     };
+
+    private static int? TryGetInt32(JsonElement payload, string propertyName) =>
+        payload.TryGetProperty(propertyName, out var value) && value.TryGetInt32(out var result)
+            ? result
+            : null;
+
+    private static long? TryGetInt64(JsonElement payload, string propertyName) =>
+        payload.TryGetProperty(propertyName, out var value) && value.TryGetInt64(out var result)
+            ? result
+            : null;
 }
