@@ -9,6 +9,7 @@ using KalshiSharp.Rest.Incentives;
 using KalshiSharp.Rest.LiveData;
 using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
+using KalshiSharp.Rest.OrderGroups;
 using KalshiSharp.Rest.Portfolio;
 using KalshiSharp.Rest.Series;
 using KalshiSharp.Rest.StructuredTargets;
@@ -33,6 +34,7 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IEventClient _events;
     private readonly IOrderClient _orders;
     private readonly IOrderClientV2? _ordersV2;
+    private readonly IOrderGroupClient? _orderGroups;
     private readonly IHistoricalClient? _historical;
     private readonly IIncentiveClient? _incentives;
     private readonly ILiveDataClient? _liveData;
@@ -113,6 +115,7 @@ public sealed class KalshiClient : IKalshiClient
         _events = new EventClient(kalshiHttpClient);
         _orders = new OrderClient(kalshiHttpClient);
         _ordersV2 = new OrderClientV2(kalshiHttpClient);
+        _orderGroups = new OrderGroupClient(kalshiHttpClient);
         _historical = new HistoricalClient(kalshiHttpClient);
         _incentives = new IncentiveClient(kalshiHttpClient);
         _liveData = new LiveDataClient(kalshiHttpClient);
@@ -139,6 +142,7 @@ public sealed class KalshiClient : IKalshiClient
         _events = new EventClient(httpClient);
         _orders = new OrderClient(httpClient);
         _ordersV2 = new OrderClientV2(httpClient);
+        _orderGroups = new OrderGroupClient(httpClient);
         _historical = new HistoricalClient(httpClient);
         _incentives = new IncentiveClient(httpClient);
         _liveData = new LiveDataClient(httpClient);
@@ -174,6 +178,7 @@ public sealed class KalshiClient : IKalshiClient
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _orders = orders ?? throw new ArgumentNullException(nameof(orders));
         _ordersV2 = null;
+        _orderGroups = null;
         _historical = null;
         _incentives = null;
         _liveData = null;
@@ -253,6 +258,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _ordersV2;
+        }
+    }
+
+    /// <inheritdoc />
+    public IOrderGroupClient? OrderGroups
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _orderGroups;
         }
     }
 

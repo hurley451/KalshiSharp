@@ -38,6 +38,7 @@ public sealed class WebSocketMessageConverter : JsonConverter<WebSocketMessage>
             "multivariate_market_lifecycle" => typeof(MultivariateMarketLifecycleUpdate),
             "event_lifecycle" => typeof(EventLifecycleUpdate),
             "event_fee_update" => typeof(EventFeeUpdate),
+            "order_group_update" => typeof(OrderGroupUpdate),
             _ => null
         };
 

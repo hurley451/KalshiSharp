@@ -274,6 +274,37 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
     }
 
     [Fact]
+    public void OrderGroupUpdate_DeserializesCurrentSchema()
+    {
+        const string json = """
+        {
+          "type": "order_group_update",
+          "sid": 5,
+          "sending_ts_ms": 1704067200123,
+          "msg": {
+            "order_group_id": "og-1",
+            "status": "triggered",
+            "triggered": true,
+            "exchange_index": 1,
+            "subaccount": 2,
+            "contracts_limit": 100,
+            "contracts_limit_fp": "100.00",
+            "order_ids": ["order-1"]
+          }
+        }
+        """;
+
+        var result = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default);
+
+        var update = result.Should().BeOfType<OrderGroupUpdate>().Subject;
+        update.Message.OrderGroupId.Should().Be("og-1");
+        update.Message.ExchangeIndex.Should().Be(1);
+        update.Message.ContractsLimitFp.Should().Be("100.00");
+        update.Message.Triggered.Should().BeTrue();
+        update.SendingTimestampUtc.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1704067200123));
+    }
+
+    [Fact]
     public async Task Messages_ReceivesOrderBookUpdate()
     {
         // Arrange
