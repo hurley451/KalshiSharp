@@ -5,6 +5,7 @@ using KalshiSharp.Rest.Incentives;
 using KalshiSharp.Rest.LiveData;
 using KalshiSharp.Rest.Markets;
 using KalshiSharp.Rest.Orders;
+using KalshiSharp.Rest.OrderGroups;
 using KalshiSharp.Rest.Portfolio;
 using KalshiSharp.Rest.Series;
 using KalshiSharp.Rest.StructuredTargets;
@@ -49,6 +50,11 @@ public interface IKalshiClient : IDisposable
     /// Gets the active V2 event-order mutation client when the implementation supports it.
     /// </summary>
     IOrderClientV2? OrdersV2 => null;
+
+    /// <summary>
+    /// Gets the order-group client when the implementation supports it.
+    /// </summary>
+    IOrderGroupClient? OrderGroups => null;
 
     /// <summary>
     /// Gets the explicit historical-data client when the implementation supports it.

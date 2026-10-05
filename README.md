@@ -283,6 +283,26 @@ await ordersV2.CancelAllOrdersAsync();
 await ordersV2.CancelAllOrdersAsync(subaccount: 2);
 ```
 
+### Order Groups
+
+```csharp
+var orderGroups = client.OrderGroups
+    ?? throw new NotSupportedException("This client does not provide order-group access.");
+
+var group = await orderGroups.CreateOrderGroupAsync(new CreateOrderGroupRequest
+{
+    ExchangeIndex = 1,
+    Subaccount = 0,
+    ContractsLimitFp = "25.00"
+});
+
+await orderGroups.TriggerOrderGroupAsync(group.OrderGroupId!, new TriggerOrderGroupRequest
+{
+    ExchangeIndex = 1,
+    Subaccount = 0
+});
+```
+
 ### Portfolio Information
 
 ```csharp
