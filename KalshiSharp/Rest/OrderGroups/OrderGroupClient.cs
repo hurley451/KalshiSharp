@@ -1,4 +1,5 @@
 using KalshiSharp.Http;
+using KalshiSharp.Models.Common;
 using KalshiSharp.Models.Requests;
 using KalshiSharp.Models.Responses;
 
@@ -20,19 +21,25 @@ internal sealed class OrderGroupClient(IKalshiHttpClient httpClient) : IOrderGro
         return httpClient.SendAsync<OrderGroupsResponse>(request, cancellationToken);
     }
 
-    public Task<SingleOrderGroupResponse> GetOrderGroupAsync(
+    public Task<GetOrderGroupResponse> GetOrderGroupAsync(
         string orderGroupId,
+        int? subaccount = null,
         CancellationToken cancellationToken = default)
     {
+        SettlementQuery.ValidateSubaccount(subaccount);
+
+        var builder = new QueryStringBuilder();
+        builder.AppendIfNotNull("subaccount", subaccount);
+
         var request = new KalshiRequest
         {
             Method = HttpMethod.Get,
-            Path = $"{BasePath}/{EscapeOrderGroupId(orderGroupId)}"
+            Path = $"{BasePath}/{EscapeOrderGroupId(orderGroupId)}{builder.Build()}"
         };
-        return httpClient.SendAsync<SingleOrderGroupResponse>(request, cancellationToken);
+        return httpClient.SendAsync<GetOrderGroupResponse>(request, cancellationToken);
     }
 
-    public Task<SingleOrderGroupResponse> CreateOrderGroupAsync(
+    public Task<CreateOrderGroupResponse> CreateOrderGroupAsync(
         CreateOrderGroupRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -45,10 +52,10 @@ internal sealed class OrderGroupClient(IKalshiHttpClient httpClient) : IOrderGro
             Path = $"{BasePath}/create",
             Content = request
         };
-        return httpClient.SendAsync<SingleOrderGroupResponse>(httpRequest, cancellationToken);
+        return httpClient.SendAsync<CreateOrderGroupResponse>(httpRequest, cancellationToken);
     }
 
-    public Task<SingleOrderGroupResponse> UpdateOrderGroupAsync(
+    public Task UpdateOrderGroupAsync(
         string orderGroupId,
         UpdateOrderGroupRequest request,
         CancellationToken cancellationToken = default)
@@ -59,10 +66,14 @@ internal sealed class OrderGroupClient(IKalshiHttpClient httpClient) : IOrderGro
         var httpRequest = new KalshiRequest
         {
             Method = HttpMethod.Put,
-            Path = $"{BasePath}/{EscapeOrderGroupId(orderGroupId)}/limit",
-            Content = request
+            Path = $"{BasePath}/{EscapeOrderGroupId(orderGroupId)}/limit{BuildActionQuery(request)}",
+            Content = new UpdateOrderGroupLimitRequest
+            {
+                ContractsLimit = request.ContractsLimit,
+                ContractsLimitFp = request.ContractsLimitFp
+            }
         };
-        return httpClient.SendAsync<SingleOrderGroupResponse>(httpRequest, cancellationToken);
+        return httpClient.SendAsync(httpRequest, cancellationToken);
     }
 
     public Task TriggerOrderGroupAsync(
@@ -111,10 +122,21 @@ internal sealed class OrderGroupClient(IKalshiHttpClient httpClient) : IOrderGro
         var request = new KalshiRequest
         {
             Method = method,
-            Path = path,
-            Content = content
+            Path = $"{path}{BuildActionQuery(content)}"
         };
         return httpClient.SendAsync(request, cancellationToken);
+    }
+
+    private static string BuildActionQuery(object request)
+    {
+        var builder = new QueryStringBuilder();
+        if (request is OrderGroupActionRequest actionRequest)
+        {
+            builder.AppendIfNotNull("subaccount", actionRequest.Subaccount);
+            builder.AppendIfNotNull("exchange_index", actionRequest.ExchangeIndex);
+        }
+
+        return builder.Build();
     }
 
     private static string EscapeOrderGroupId(string orderGroupId)
@@ -150,5 +172,12 @@ internal sealed class OrderGroupClient(IKalshiHttpClient httpClient) : IOrderGro
         {
             throw new ArgumentOutOfRangeException(nameof(request), "Exchange index must be nonnegative.");
         }
+    }
+
+    private sealed record UpdateOrderGroupLimitRequest
+    {
+        public long? ContractsLimit { get; init; }
+
+        public string? ContractsLimitFp { get; init; }
     }
 }

@@ -12,17 +12,18 @@ public interface IOrderGroupClient
         CancellationToken cancellationToken = default);
 
     /// <summary>Gets a single order group by identifier.</summary>
-    Task<SingleOrderGroupResponse> GetOrderGroupAsync(
+    Task<GetOrderGroupResponse> GetOrderGroupAsync(
         string orderGroupId,
+        int? subaccount = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>Creates an order group.</summary>
-    Task<SingleOrderGroupResponse> CreateOrderGroupAsync(
+    Task<CreateOrderGroupResponse> CreateOrderGroupAsync(
         CreateOrderGroupRequest request,
         CancellationToken cancellationToken = default);
 
     /// <summary>Updates an order group.</summary>
-    Task<SingleOrderGroupResponse> UpdateOrderGroupAsync(
+    Task UpdateOrderGroupAsync(
         string orderGroupId,
         UpdateOrderGroupRequest request,
         CancellationToken cancellationToken = default);

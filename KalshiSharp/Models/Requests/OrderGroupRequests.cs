@@ -3,7 +3,7 @@ using KalshiSharp.Models.Common;
 namespace KalshiSharp.Models.Requests;
 
 /// <summary>Query parameters for listing order groups.</summary>
-public sealed record OrderGroupQuery : PaginationParameters
+public sealed record OrderGroupQuery
 {
     /// <summary>Filter by subaccount, including zero for the primary account.</summary>
     public int? Subaccount { get; init; }
@@ -11,11 +11,9 @@ public sealed record OrderGroupQuery : PaginationParameters
     /// <summary>Builds the encoded query string.</summary>
     public string ToQueryString()
     {
-        SettlementQuery.ValidateLimit(Limit);
         SettlementQuery.ValidateSubaccount(Subaccount);
 
         var builder = new QueryStringBuilder();
-        AppendPaginationParameters(builder);
         builder.AppendIfNotNull("subaccount", Subaccount);
         return builder.Build();
     }

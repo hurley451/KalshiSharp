@@ -57,12 +57,10 @@ public sealed class OrderGroupClientTests : IDisposable
     }
 
     [Fact]
-    public async Task ListOrderGroupsAsync_AppliesPaginationAndSubaccountFilter()
+    public async Task ListOrderGroupsAsync_AppliesSubaccountFilter()
     {
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/portfolio/order_groups")
-                .WithParam("limit", "10")
-                .WithParam("cursor", "next")
                 .WithParam("subaccount", "2")
                 .UsingGet())
             .RespondWith(Response.Create()
@@ -83,22 +81,19 @@ public sealed class OrderGroupClientTests : IDisposable
                           "created_ts_ms": 1704067200000,
                           "updated_ts_ms": 1704067201000
                         }
-                      ],
-                      "cursor": "after"
+                      ]
                     }
                     """));
 
         var result = await _client.ListOrderGroupsAsync(new OrderGroupQuery
         {
-            Limit = 10,
-            Cursor = "next",
             Subaccount = 2
         });
 
         result.Items.Should().ContainSingle();
         result.Items[0].OrderGroupId.Should().Be("og-1");
         result.Items[0].ContractsLimitFp.Should().Be("100.00");
-        result.HasMore.Should().BeTrue();
+        result.HasMore.Should().BeFalse();
     }
 
     [Fact]
@@ -106,15 +101,25 @@ public sealed class OrderGroupClientTests : IDisposable
     {
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/portfolio/order_groups/og-1")
+                .WithParam("subaccount", "2")
                 .UsingGet())
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
                 .WithHeader("Content-Type", "application/json")
-                .WithBody("""{"order_group":{"order_group_id":"og-1","status":"open"}}"""));
+                .WithBody("""
+                    {
+                      "is_auto_cancel_enabled": true,
+                      "contracts_limit_fp": "100.00",
+                      "orders": ["order-1"],
+                      "exchange_index": 1
+                    }
+                    """));
 
-        var result = await _client.GetOrderGroupAsync("og-1");
+        var result = await _client.GetOrderGroupAsync("og-1", subaccount: 2);
 
-        result.OrderGroup!.OrderGroupId.Should().Be("og-1");
+        result.IsAutoCancelEnabled.Should().BeTrue();
+        result.Orders.Should().ContainSingle().Which.Should().Be("order-1");
+        result.ContractsLimitFp.Should().Be("100.00");
     }
 
     [Fact]
@@ -136,7 +141,7 @@ public sealed class OrderGroupClientTests : IDisposable
                     body.Contains("\"subaccount\":0", StringComparison.Ordinal) &&
                     body.Contains("\"contracts_limit_fp\":\"100.00\"", StringComparison.Ordinal)))
             .RespondWith(Response.Create()
-                .WithStatusCode(200)
+                .WithStatusCode(201)
                 .WithHeader("Content-Type", "application/json")
                 .WithBody("""{"order_group_id":"og-1","subaccount":0,"exchange_index":1}"""));
 
@@ -155,26 +160,31 @@ public sealed class OrderGroupClientTests : IDisposable
     {
         _server.Given(Request.Create()
                 .WithPath("/trade-api/v2/portfolio/order_groups/og-1/limit")
+                .WithParam("exchange_index", "1")
+                .WithParam("subaccount", "2")
                 .UsingPut()
-                .WithBody(body => body!.Contains("\"contracts_limit\":25", StringComparison.Ordinal)))
+                .WithBody(body =>
+                    body!.Contains("\"contracts_limit\":25", StringComparison.Ordinal) &&
+                    !body.Contains("exchange_index", StringComparison.Ordinal) &&
+                    !body.Contains("subaccount", StringComparison.Ordinal)))
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
                 .WithHeader("Content-Type", "application/json")
-                .WithBody("""{"order_group":{"order_group_id":"og-1","contracts_limit":25}}"""));
+                .WithBody("{}"));
 
-        var result = await _client.UpdateOrderGroupAsync("og-1", new UpdateOrderGroupRequest
+        await _client.UpdateOrderGroupAsync("og-1", new UpdateOrderGroupRequest
         {
+            ExchangeIndex = 1,
+            Subaccount = 2,
             ContractsLimit = 25
         });
-
-        result.OrderGroup!.ContractsLimit.Should().Be(25);
     }
 
     [Theory]
     [InlineData("trigger", "PUT")]
     [InlineData("reset", "PUT")]
     [InlineData("", "DELETE")]
-    public async Task ActionMethods_SendActionBody(string action, string method)
+    public async Task ActionMethods_SendDocumentedQueryShape(string action, string method)
     {
         var path = string.IsNullOrEmpty(action)
             ? "/trade-api/v2/portfolio/order_groups/og-1"
@@ -182,10 +192,10 @@ public sealed class OrderGroupClientTests : IDisposable
 
         _server.Given(Request.Create()
                 .WithPath(path)
+                .WithParam("exchange_index", "3")
+                .WithParam("subaccount", "63")
                 .UsingMethod(method)
-                .WithBody(body =>
-                    body!.Contains("\"exchange_index\":3", StringComparison.Ordinal) &&
-                    body.Contains("\"subaccount\":63", StringComparison.Ordinal)))
+                .WithBody(body => string.IsNullOrEmpty(body)))
             .RespondWith(Response.Create()
                 .WithStatusCode(200)
                 .WithHeader("Content-Type", "application/json")

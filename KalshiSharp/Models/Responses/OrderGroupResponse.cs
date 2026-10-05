@@ -12,12 +12,9 @@ public sealed record OrderGroupsResponse : PagedResponse<OrderGroupResponse>
     public override IReadOnlyList<OrderGroupResponse> Items => OrderGroups;
 }
 
-/// <summary>Response wrapper for a single order group.</summary>
-public sealed record SingleOrderGroupResponse
+/// <summary>Response for creating an order group.</summary>
+public sealed record CreateOrderGroupResponse
 {
-    /// <summary>The requested order group.</summary>
-    public OrderGroupResponse? OrderGroup { get; init; }
-
     /// <summary>Order-group identifier returned by create operations.</summary>
     public string? OrderGroupId { get; init; }
 
@@ -25,6 +22,22 @@ public sealed record SingleOrderGroupResponse
     public int? Subaccount { get; init; }
 
     /// <summary>Exchange shard for the order group returned by create operations.</summary>
+    public int? ExchangeIndex { get; init; }
+}
+
+/// <summary>Response for retrieving one order group.</summary>
+public sealed record GetOrderGroupResponse
+{
+    /// <summary>Whether automatic cancellation is enabled for the group.</summary>
+    public required bool IsAutoCancelEnabled { get; init; }
+
+    /// <summary>Current fixed-point contracts limit for the rolling window.</summary>
+    public string? ContractsLimitFp { get; init; }
+
+    /// <summary>Order identifiers that belong to the group.</summary>
+    public IReadOnlyList<string> Orders { get; init; } = [];
+
+    /// <summary>Exchange shard for the order group.</summary>
     public int? ExchangeIndex { get; init; }
 }
 
