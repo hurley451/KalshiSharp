@@ -547,6 +547,44 @@ public sealed class PortfolioClientTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateSubaccountAsync_SendsOptionalExchangeIndexAndParsesNumber()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/subaccounts")
+                .UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(201)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"subaccount_number":7}"""));
+
+        var result = await _portfolioClient.CreateSubaccountAsync(new CreateSubaccountRequest
+        {
+            ExchangeIndex = 2
+        });
+
+        result.SubaccountNumber.Should().Be(7);
+        _server.LogEntries.Should().ContainSingle();
+        var requestBody = _server.LogEntries[0].RequestMessage!.Body;
+        requestBody.Should().NotBeNull();
+        using var body = JsonDocument.Parse(requestBody!);
+        body.RootElement.GetProperty("exchange_index").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CreateSubaccountAsync_AllowsOmittedRequestBody()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/subaccounts")
+                .UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(201)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"subaccount_number":1}"""));
+
+        var result = await _portfolioClient.CreateSubaccountAsync();
+
+        result.SubaccountNumber.Should().Be(1);
+    }
+
+    [Fact]
     public async Task TransferBetweenSubaccountsAsync_SendsCurrentRequestShape()
     {
         var transferId = Guid.Parse("3c90c3cc-0d44-4b50-8888-8dd25736052a");
@@ -701,6 +739,55 @@ public sealed class PortfolioClientTests : IDisposable
         result.Items[0].AmountCents.Should().Be(2_147_483_648);
         result.Items[0].CreatedTs.Should().Be(1755600000);
         result.Items[0].ExchangeIndex.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GetSubaccountNettingAsync_ParsesConfigs()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/subaccounts/netting")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "netting_configs": [
+                        { "subaccount_number": 0, "enabled": true, "exchange_index": 0 },
+                        { "subaccount_number": 3, "enabled": false, "exchange_index": 2 }
+                    ]
+                }
+                """));
+
+        var result = await _portfolioClient.GetSubaccountNettingAsync();
+
+        result.NettingConfigs.Should().HaveCount(2);
+        result.NettingConfigs[0].SubaccountNumber.Should().Be(0);
+        result.NettingConfigs[0].Enabled.Should().BeTrue();
+        result.NettingConfigs[1].SubaccountNumber.Should().Be(3);
+        result.NettingConfigs[1].ExchangeIndex.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task UpdateSubaccountNettingAsync_SendsCurrentRequestShape()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/subaccounts/netting")
+                .UsingPut())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json"));
+
+        await _portfolioClient.UpdateSubaccountNettingAsync(new UpdateSubaccountNettingRequest
+        {
+            SubaccountNumber = 63,
+            Enabled = true
+        });
+
+        _server.LogEntries.Should().ContainSingle();
+        var requestBody = _server.LogEntries[0].RequestMessage!.Body;
+        requestBody.Should().NotBeNull();
+        using var body = JsonDocument.Parse(requestBody!);
+        body.RootElement.GetProperty("subaccount_number").GetInt32().Should().Be(63);
+        body.RootElement.GetProperty("enabled").GetBoolean().Should().BeTrue();
     }
 
     [Fact]
@@ -964,5 +1051,19 @@ public sealed class PortfolioClientTests : IDisposable
         invalidSettlementLimit.Should().Throw<ArgumentOutOfRangeException>();
         invalidSettlementSubaccount.Should().Throw<ArgumentOutOfRangeException>();
         invalidTransferLimit.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public async Task SubaccountAdministrationAsync_ValidatesDocumentedBoundaries()
+    {
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.CreateSubaccountAsync(new CreateSubaccountRequest { ExchangeIndex = -1 }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.UpdateSubaccountNettingAsync(new UpdateSubaccountNettingRequest
+            {
+                SubaccountNumber = 64,
+                Enabled = true
+            }));
     }
 }

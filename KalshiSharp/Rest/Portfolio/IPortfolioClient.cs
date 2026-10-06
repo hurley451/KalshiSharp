@@ -23,6 +23,12 @@ public interface IPortfolioClient
     Task<SubaccountBalancesResponse> GetSubaccountBalancesAsync(CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support all-subaccount balances.");
 
+    /// <summary>Creates a new numbered subaccount.</summary>
+    Task<CreateSubaccountResponse> CreateSubaccountAsync(
+        CreateSubaccountRequest? request = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support subaccount creation.");
+
     /// <summary>Transfers funds between two subaccounts.</summary>
     Task TransferBetweenSubaccountsAsync(
         CreateSubaccountTransferRequest request,
@@ -34,6 +40,16 @@ public interface IPortfolioClient
         SubaccountTransferQuery? query = null,
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support subaccount transfer history.");
+
+    /// <summary>Gets netting settings for all subaccounts.</summary>
+    Task<SubaccountNettingResponse> GetSubaccountNettingAsync(CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support subaccount netting.");
+
+    /// <summary>Updates whether netting is enabled for one subaccount.</summary>
+    Task UpdateSubaccountNettingAsync(
+        UpdateSubaccountNettingRequest request,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support subaccount netting.");
 
     /// <summary>Gets the total value of resting orders and exchange-index breakdowns.</summary>
     Task<TotalRestingOrderValueResponse> GetTotalRestingOrderValueAsync(CancellationToken cancellationToken = default) =>

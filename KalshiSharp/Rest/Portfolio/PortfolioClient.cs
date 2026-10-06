@@ -58,6 +58,22 @@ internal sealed class PortfolioClient : IPortfolioClient
     }
 
     /// <inheritdoc />
+    public Task<CreateSubaccountResponse> CreateSubaccountAsync(
+        CreateSubaccountRequest? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateCreateSubaccount(request);
+
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Post,
+            Path = $"{BasePath}/subaccounts",
+            Content = request
+        };
+        return _httpClient.SendAsync<CreateSubaccountResponse>(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task TransferBetweenSubaccountsAsync(
         CreateSubaccountTransferRequest request,
         CancellationToken cancellationToken = default)
@@ -85,6 +101,34 @@ internal sealed class PortfolioClient : IPortfolioClient
             Path = $"{BasePath}/subaccounts/transfers{query?.ToQueryString()}"
         };
         return _httpClient.SendAsync<SubaccountTransfersResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<SubaccountNettingResponse> GetSubaccountNettingAsync(CancellationToken cancellationToken = default)
+    {
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/subaccounts/netting"
+        };
+        return _httpClient.SendAsync<SubaccountNettingResponse>(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task UpdateSubaccountNettingAsync(
+        UpdateSubaccountNettingRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        SettlementQuery.ValidateSubaccount(request.SubaccountNumber);
+
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Put,
+            Path = $"{BasePath}/subaccounts/netting",
+            Content = request
+        };
+        return _httpClient.SendAsync(httpRequest, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -296,6 +340,16 @@ internal sealed class PortfolioClient : IPortfolioClient
             throw new ArgumentException(
                 "Target balance allocation percentages must total 100, or be empty to disable automatic rebalancing.",
                 nameof(request));
+        }
+    }
+
+    private static void ValidateCreateSubaccount(CreateSubaccountRequest? request)
+    {
+        if (request?.ExchangeIndex is < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                "Exchange index must be nonnegative.");
         }
     }
 
