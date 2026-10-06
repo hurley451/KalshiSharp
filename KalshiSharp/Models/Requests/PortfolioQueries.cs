@@ -71,6 +71,13 @@ public sealed record SubaccountTransferQuery : PaginationParameters
     }
 }
 
+/// <summary>Request for creating a numbered subaccount.</summary>
+public sealed record CreateSubaccountRequest
+{
+    /// <summary>Exchange shard for the new subaccount. Defaults to 0 when omitted.</summary>
+    public int? ExchangeIndex { get; init; }
+}
+
 /// <summary>Request for transferring funds between subaccounts.</summary>
 public sealed record CreateSubaccountTransferRequest
 {
@@ -88,4 +95,14 @@ public sealed record CreateSubaccountTransferRequest
 
     /// <summary>Exchange shard to apply the transfer on. Defaults to 0 when omitted.</summary>
     public int? ExchangeIndex { get; init; }
+}
+
+/// <summary>Request for updating subaccount netting.</summary>
+public sealed record UpdateSubaccountNettingRequest
+{
+    /// <summary>Subaccount number. Use 0 for the primary account.</summary>
+    public required int SubaccountNumber { get; init; }
+
+    /// <summary>Whether netting is enabled for the subaccount.</summary>
+    public required bool Enabled { get; init; }
 }
