@@ -438,6 +438,16 @@ var generated = await apiKeys.GenerateApiKeyAsync(new GenerateApiKeyRequest
 Console.WriteLine($"Generated API key: {generated.ApiKeyId}");
 ```
 
+### Communications
+
+```csharp
+var communications = client.Communications
+    ?? throw new NotSupportedException("This client does not provide communications access.");
+
+var identity = await communications.GetCommunicationsIdAsync();
+Console.WriteLine($"Communications ID: {identity.CommunicationsId}");
+```
+
 ### WebSocket Real-Time Updates
 
 ```csharp

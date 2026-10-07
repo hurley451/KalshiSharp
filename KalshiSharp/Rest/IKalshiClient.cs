@@ -13,6 +13,7 @@ using KalshiSharp.Rest.Milestones;
 using KalshiSharp.Rest.Users;
 using KalshiSharp.Rest.Account;
 using KalshiSharp.Rest.ApiKeys;
+using KalshiSharp.Rest.Communications;
 
 namespace KalshiSharp.Rest;
 
@@ -26,6 +27,10 @@ public interface IKalshiClient : IDisposable
 
     /// <summary>Gets API-key administration endpoints when supported.</summary>
     IApiKeyClient? ApiKeys => null;
+
+    /// <summary>Gets communications and RFQ-related endpoints when supported.</summary>
+    ICommunicationsClient? Communications => null;
+
     /// <summary>
     /// Gets the exchange client for status and schedule endpoints.
     /// </summary>
