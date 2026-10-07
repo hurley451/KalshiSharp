@@ -25,6 +25,7 @@ public sealed class PublishedApiCompatibilityTests
     {
         IKalshiClient client = new LegacyRootClient();
 
+        client.Communications.Should().BeNull();
         client.Incentives.Should().BeNull();
         client.OrderGroups.Should().BeNull();
     }
