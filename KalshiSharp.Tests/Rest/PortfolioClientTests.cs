@@ -320,6 +320,52 @@ public sealed class PortfolioClientTests : IDisposable
     }
 
     [Fact]
+    public async Task ListFillsAsync_WithMultipleTickerFilter_JoinsDocumentedQueryParam()
+    {
+        // Arrange
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/fills")
+                .WithParam("ticker", "MARKET-A,MARKET-B")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"fills": [], "cursor": null}"""));
+
+        // Act
+        var result = await _portfolioClient.ListFillsAsync(new FillQuery
+        {
+            Tickers = ["MARKET-A", "MARKET-B"]
+        });
+
+        // Assert
+        result.Should().NotBeNull();
+        _server.LogEntries.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void FillQuery_RejectsMultipleTickerFilterAboveDocumentedLimit()
+    {
+        var tickers = Enumerable.Range(0, 101).Select(i => $"MARKET-{i}").ToArray();
+
+        var query = new FillQuery { Tickers = tickers };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => query.ToQueryString());
+    }
+
+    [Fact]
+    public void FillQuery_RejectsAmbiguousSingleAndMultipleTickerFilters()
+    {
+        var query = new FillQuery
+        {
+            Ticker = "MARKET-A",
+            Tickers = ["MARKET-B"]
+        };
+
+        Assert.Throws<ArgumentException>(() => query.ToQueryString());
+    }
+
+    [Fact]
     public async Task ListFillsAsync_WithOrderIdFilter_IncludesQueryParam()
     {
         // Arrange

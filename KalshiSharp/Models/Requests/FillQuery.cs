@@ -6,8 +6,11 @@ namespace KalshiSharp.Models.Requests;
 /// <summary>Query parameters for listing fills.</summary>
 public sealed record FillQuery : PaginationParameters
 {
-    /// <summary>Filter by market ticker.</summary>
+    /// <summary>Filter by a single market ticker.</summary>
     public string? Ticker { get; init; }
+
+    /// <summary>Filter by up to 100 market tickers.</summary>
+    public IReadOnlyList<string>? Tickers { get; init; }
 
     /// <summary>Filter by order identifier.</summary>
     public string? OrderId { get; init; }
@@ -29,7 +32,7 @@ public sealed record FillQuery : PaginationParameters
     {
         var builder = new QueryStringBuilder();
         AppendPaginationParameters(builder);
-        builder.AppendIfNotEmpty("ticker", Ticker);
+        AppendTickerFilter(builder, Ticker, Tickers);
         builder.AppendIfNotEmpty("order_id", OrderId);
         if (Subaccount.HasValue)
         {
@@ -51,5 +54,31 @@ public sealed record FillQuery : PaginationParameters
         }
 
         return builder.Build();
+    }
+
+    private static void AppendTickerFilter(QueryStringBuilder builder, string? ticker, IReadOnlyList<string>? tickers)
+    {
+        if (!string.IsNullOrEmpty(ticker) && tickers is { Count: > 0 })
+        {
+            throw new ArgumentException("Specify either Ticker or Tickers, not both.", nameof(tickers));
+        }
+
+        if (tickers is { Count: > 0 })
+        {
+            if (tickers.Count > 100)
+            {
+                throw new ArgumentOutOfRangeException(nameof(tickers), "At most 100 market tickers can be supplied.");
+            }
+
+            if (tickers.Any(string.IsNullOrWhiteSpace))
+            {
+                throw new ArgumentException("Market tickers cannot contain empty values.", nameof(tickers));
+            }
+
+            builder.Append("ticker", string.Join(",", tickers));
+            return;
+        }
+
+        builder.AppendIfNotEmpty("ticker", ticker);
     }
 }
