@@ -323,6 +323,12 @@ foreach (var position in positions.Items)
 // List fills
 var fills = await client.Portfolio.ListFillsAsync();
 
+// Filter fills to one or more market tickers.
+var selectedFills = await client.Portfolio.ListFillsAsync(new FillQuery
+{
+    Tickers = ["MARKET-A", "MARKET-B"]
+});
+
 // List settlements across all subaccounts, or scope to one subaccount.
 var settlements = await client.Portfolio.ListSettlementsAsync(new SettlementQuery
 {
