@@ -18,6 +18,7 @@ using KalshiSharp.Rest.Users;
 using KalshiSharp.Rest.Account;
 using KalshiSharp.Rest.ApiKeys;
 using KalshiSharp.Rest.Communications;
+using KalshiSharp.Rest.Multivariate;
 using KalshiSharp.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -47,6 +48,7 @@ public sealed class KalshiClient : IKalshiClient
     private readonly IAccountClient? _account;
     private readonly IApiKeyClient? _apiKeys;
     private readonly ICommunicationsClient? _communications;
+    private readonly IMultivariateClient? _multivariate;
 
     // Resources we own and must dispose (only set when using direct instantiation)
     private readonly HttpClient? _ownedHttpClient;
@@ -129,6 +131,7 @@ public sealed class KalshiClient : IKalshiClient
         _account = new AccountClient(kalshiHttpClient);
         _apiKeys = new ApiKeyClient(kalshiHttpClient);
         _communications = new CommunicationsClient(kalshiHttpClient);
+        _multivariate = new MultivariateClient(kalshiHttpClient);
     }
 
     /// <summary>
@@ -157,6 +160,7 @@ public sealed class KalshiClient : IKalshiClient
         _account = new AccountClient(httpClient);
         _apiKeys = new ApiKeyClient(httpClient);
         _communications = new CommunicationsClient(httpClient);
+        _multivariate = new MultivariateClient(httpClient);
     }
 
     /// <summary>
@@ -194,6 +198,7 @@ public sealed class KalshiClient : IKalshiClient
         _account = null;
         _apiKeys = null;
         _communications = null;
+        _multivariate = null;
     }
 
     /// <inheritdoc />
@@ -233,6 +238,16 @@ public sealed class KalshiClient : IKalshiClient
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _communications;
+        }
+    }
+
+    /// <inheritdoc />
+    public IMultivariateClient? Multivariate
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _multivariate;
         }
     }
 

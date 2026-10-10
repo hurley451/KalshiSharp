@@ -14,6 +14,7 @@ using KalshiSharp.Rest.Users;
 using KalshiSharp.Rest.Account;
 using KalshiSharp.Rest.ApiKeys;
 using KalshiSharp.Rest.Communications;
+using KalshiSharp.Rest.Multivariate;
 
 namespace KalshiSharp.Rest;
 
@@ -30,6 +31,9 @@ public interface IKalshiClient : IDisposable
 
     /// <summary>Gets communications and RFQ-related endpoints when supported.</summary>
     ICommunicationsClient? Communications => null;
+
+    /// <summary>Gets multivariate event collection endpoints when supported.</summary>
+    IMultivariateClient? Multivariate => null;
 
     /// <summary>
     /// Gets the exchange client for status and schedule endpoints.

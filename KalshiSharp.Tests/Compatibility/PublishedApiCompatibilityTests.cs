@@ -27,6 +27,7 @@ public sealed class PublishedApiCompatibilityTests
 
         client.Communications.Should().BeNull();
         client.Incentives.Should().BeNull();
+        client.Multivariate.Should().BeNull();
         client.OrderGroups.Should().BeNull();
     }
 
