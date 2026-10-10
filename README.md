@@ -197,6 +197,34 @@ foreach (var milestone in upcoming.Items)
 }
 ```
 
+### Multivariate Event Collections
+
+Multivariate collections describe combo-market creation rules. Use the collection price grid
+for newly created markets, then use each market's own `PriceRanges` after creation.
+
+```csharp
+using KalshiSharp.Models.Requests;
+
+var multivariate = client.Multivariate
+    ?? throw new NotSupportedException("This client does not provide multivariate collection access.");
+
+var collections = await multivariate.ListEventCollectionsAsync(new MultivariateEventCollectionQuery
+{
+    Status = "open",
+    SeriesTicker = "KXEXAMPLE",
+    Limit = 100
+});
+
+foreach (var collection in collections.Items)
+{
+    Console.WriteLine($"{collection.CollectionTicker}: {collection.PriceLevelStructure}");
+    foreach (var range in collection.PriceRanges)
+    {
+        Console.WriteLine($"  ${range.Start} - ${range.End}: step ${range.Step}");
+    }
+}
+```
+
 ### Weather Live Data
 
 Weather live-data access is an optional client capability for city temperature indexes and

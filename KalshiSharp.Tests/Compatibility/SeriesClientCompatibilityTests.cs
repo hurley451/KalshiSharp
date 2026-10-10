@@ -22,6 +22,7 @@ public sealed class SeriesClientCompatibilityTests
         client.StructuredTargets.Should().BeNull();
         client.Milestones.Should().BeNull();
         client.LiveData.Should().BeNull();
+        client.Multivariate.Should().BeNull();
     }
 
     [Fact]
@@ -33,6 +34,7 @@ public sealed class SeriesClientCompatibilityTests
         client.StructuredTargets.Should().NotBeNull();
         client.Milestones.Should().NotBeNull();
         client.LiveData.Should().NotBeNull();
+        client.Multivariate.Should().NotBeNull();
     }
 
     private sealed class LegacyRootClient : IKalshiClient
