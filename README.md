@@ -47,7 +47,7 @@ conformance framework for the Kalshi SDK family. See
 | Portfolio | Balance, positions, fills, settlements, subaccounts, transfers, resting value, target allocation |
 | Historical data | Cutoff, markets, candlesticks, trades, fills, orders, positions |
 | Reference data | Series, structured targets, milestones, multivariate collections, live weather data |
-| Communications and admin | Communications identity and API-key administration |
+| Communications and admin | Communications identity, RFQs, quotes, and API-key administration |
 | WebSocket | Public market streams, private account streams, reconnect, replay, and typed messages |
 
 See [API coverage](docs/API_COVERAGE.md) for a fuller map and [visibility tracking](docs/VISIBILITY.md) for repository discovery metrics.
@@ -513,11 +513,36 @@ Console.WriteLine($"Generated API key: {generated.ApiKeyId}");
 ### Communications
 
 ```csharp
+using KalshiSharp.Models.Requests;
+
 var communications = client.Communications
     ?? throw new NotSupportedException("This client does not provide communications access.");
 
 var identity = await communications.GetCommunicationsIdAsync();
 Console.WriteLine($"Communications ID: {identity.CommunicationsId}");
+
+var rfqs = await communications.ListRfqsAsync(new RfqQuery
+{
+    MarketTicker = "MARKET-ABC",
+    UserFilter = CommunicationsUserFilter.Self
+});
+
+var createdRfq = await communications.CreateRfqAsync(new CreateRfqRequest
+{
+    MarketTicker = "MARKET-ABC",
+    ContractsFp = "10.00",
+    TargetCostDollars = "5.6000",
+    RestRemainder = true
+});
+
+var quote = await communications.CreateQuoteAsync(new CreateQuoteRequest
+{
+    RfqId = createdRfq.Id,
+    YesBid = "0.5600",
+    NoBid = "0.4400",
+    RestRemainder = false,
+    PostOnly = true
+});
 ```
 
 ### WebSocket Real-Time Updates

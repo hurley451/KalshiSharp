@@ -117,10 +117,23 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
         var isBatch = path.EndsWith("/batched", StringComparison.OrdinalIgnoreCase);
         var isV2Order = path.Contains("/portfolio/events/orders", StringComparison.OrdinalIgnoreCase);
         var isLegacyOrder = !isV2Order && path.Contains("/portfolio/orders", StringComparison.OrdinalIgnoreCase);
+        var isCreateQuote = request.Method == HttpMethod.Post &&
+            path.TrimEnd('/').Equals(
+                "/trade-api/v2/communications/quotes",
+                StringComparison.OrdinalIgnoreCase);
         var isCancelAllOrders = request.Method == HttpMethod.Delete &&
             path.TrimEnd('/').Equals(
                 "/trade-api/v2/portfolio/events/orders",
                 StringComparison.OrdinalIgnoreCase);
+
+        if (isCreateQuote)
+        {
+            return new RateLimitRequest
+            {
+                IsWrite = true,
+                TokenCost = 2
+            };
+        }
 
         if (isCancelAllOrders)
         {
