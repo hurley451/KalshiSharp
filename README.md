@@ -1,6 +1,17 @@
 # KalshiSharp
 
+[![NuGet](https://img.shields.io/nuget/v/KalshiSharp.svg)](https://www.nuget.org/packages/KalshiSharp)
+[![NuGet downloads](https://img.shields.io/nuget/dt/KalshiSharp.svg)](https://www.nuget.org/packages/KalshiSharp)
+[![CI](https://github.com/Hurley451/KalshiSharp/actions/workflows/main.yml/badge.svg)](https://github.com/Hurley451/KalshiSharp/actions/workflows/main.yml)
+[![License](https://img.shields.io/github/license/Hurley451/KalshiSharp.svg)](LICENSE)
+[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
+[![GitHub stars](https://img.shields.io/github/stars/Hurley451/KalshiSharp.svg?style=social)](https://github.com/Hurley451/KalshiSharp/stargazers)
+
 A production-grade .NET 8 SDK for the [Kalshi](https://kalshi.com) prediction market API.
+
+KalshiSharp gives C# and .NET applications typed access to Kalshi REST endpoints, WebSocket
+streams, RSA-PSS authentication, rate limiting, dependency injection, and current fixed-point
+market contracts without hand-rolling HTTP signing or JSON models.
 
 ## Features
 
@@ -13,6 +24,28 @@ A production-grade .NET 8 SDK for the [Kalshi](https://kalshi.com) prediction ma
 - **Resilience**: Built-in retry with exponential backoff, rate limiting, and circuit breaker
 - **Observability**: OpenTelemetry tracing and metrics integration
 - **Dependency Injection**: First-class support for `IServiceCollection`
+
+## Why KalshiSharp?
+
+- **Built for Kalshi's current API contracts**: fixed-point prices, shard-aware routing, V2 orders, historical data, and fast-moving market metadata.
+- **Production-oriented defaults**: RSA-PSS signing, retry, rate limiting, cancellation support, typed exceptions, and DI-friendly client construction.
+- **Real-time ready**: WebSocket subscriptions for order books, ticker, trades, fills, positions, user orders, lifecycle, and market updates.
+- **Package-first workflow**: published on NuGet with CI, coverage, vulnerability audit, pack, and package-smoke verification.
+
+## API Coverage
+
+| Area | Coverage |
+|------|----------|
+| Exchange and account metadata | Status, schedule, rate-limit discovery |
+| Markets and events | Listing, details, order books, candlesticks, dynamic price grids, localized text |
+| Orders | Legacy order reads plus current V2 create, amend, decrease, cancel, batch, and order groups |
+| Portfolio | Balance, positions, fills, settlements, subaccounts, transfers, resting value, target allocation |
+| Historical data | Cutoff, markets, candlesticks, trades, fills, orders, positions |
+| Reference data | Series, structured targets, milestones, multivariate collections, live weather data |
+| Communications and admin | Communications identity and API-key administration |
+| WebSocket | Public market streams, private account streams, reconnect, replay, and typed messages |
+
+See [API coverage](docs/API_COVERAGE.md) for a fuller map and [visibility tracking](docs/VISIBILITY.md) for repository discovery metrics.
 
 ## Installation
 
@@ -626,6 +659,10 @@ dotnet run --project KalshiSharp.Examples -- websocket
 # Run all examples
 dotnet run --project KalshiSharp.Examples -- all
 ```
+
+Example scenarios include exchange status, market discovery, V2 order placement, portfolio fills,
+and WebSocket market streams. These examples are intentionally small so they can be copied into
+new .NET console apps or services.
 
 ## Requirements
 
