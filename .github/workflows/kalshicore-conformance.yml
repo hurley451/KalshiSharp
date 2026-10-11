@@ -1,0 +1,110 @@
+name: KalshiCore Conformance
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '23 11 * * *'
+  workflow_dispatch:
+
+jobs:
+  conformance:
+    name: Run KalshiCore fixtures
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      CONFORMANCE_REPORT: KalshiSharp/artifacts/kalshicore-conformance/report.json
+
+    steps:
+      - name: Check out KalshiSharp
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: KalshiSharp
+
+      - name: Check out KalshiCore
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: hurley451/KalshiCore
+          path: KalshiCore
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        working-directory: KalshiSharp
+        run: dotnet restore KalshiSharp.sln
+
+      - name: Build
+        working-directory: KalshiSharp
+        run: dotnet build KalshiSharp.sln --configuration Release --no-restore -p:EnablePackageValidation=false
+
+      - name: Run conformance adapter
+        id: conformance
+        working-directory: KalshiSharp
+        run: >-
+          dotnet run --project KalshiSharp.Conformance/KalshiSharp.Conformance.csproj
+          --configuration Release
+          --no-build
+          --
+          --kalshicore-root "$GITHUB_WORKSPACE/KalshiCore"
+          --report artifacts/kalshicore-conformance/report.json
+
+      - name: Upload conformance report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kalshicore-conformance-report
+          path: ${{ env.CONFORMANCE_REPORT }}
+          if-no-files-found: warn
+
+      - name: File KalshiCore contract gap
+        if: always() && github.event_name == 'schedule' && steps.conformance.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.KALSHICORE_ISSUE_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "KALSHICORE_ISSUE_TOKEN is not configured; skipping parent issue filing."
+            exit 0
+          fi
+
+          title="Contract gap: KalshiSharp scheduled conformance drift"
+          existing="$(gh issue list --repo hurley451/KalshiCore --state open --search "$title in:title" --json number --jq '.[0].number // empty')"
+          body_file="$(mktemp)"
+          {
+            echo "## Summary"
+            echo "KalshiSharp scheduled conformance failed against KalshiCore."
+            echo
+            echo "## Source links"
+            echo "- Run: $RUN_URL"
+            echo
+            echo "## Affected SDK target"
+            echo "- csharp.KalshiSharp"
+            echo
+            echo "## Evidence"
+            if [ -f "$CONFORMANCE_REPORT" ]; then
+              echo '```json'
+              cat "$CONFORMANCE_REPORT"
+              echo '```'
+            else
+              echo "- No conformance report artifact was written."
+            fi
+            echo
+            echo "## Acceptance criteria"
+            echo "- Determine whether the failure belongs in KalshiCore contracts/fixtures or KalshiSharp implementation."
+            echo "- Update the affected repo and restore scheduled conformance."
+          } > "$body_file"
+
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo hurley451/KalshiCore --body-file "$body_file"
+          else
+            gh issue create --repo hurley451/KalshiCore --title "$title" --label contract-gap --body-file "$body_file"
+          fi

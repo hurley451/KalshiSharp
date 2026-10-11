@@ -13,6 +13,11 @@ KalshiSharp gives C# and .NET applications typed access to Kalshi REST endpoints
 streams, RSA-PSS authentication, rate limiting, dependency injection, and current fixed-point
 market contracts without hand-rolling HTTP signing or JSON models.
 
+KalshiSharp is the first reference target for
+[KalshiCore](https://github.com/hurley451/KalshiCore), the shared contract and
+conformance framework for the Kalshi SDK family. See
+[KalshiCore conformance](docs/KALSHICORE.md) for local validation details.
+
 ## Features
 
 - **Core API Coverage**: REST clients for exchange, markets, events, orders, portfolio, users, and historical data
