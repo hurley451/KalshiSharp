@@ -9,13 +9,14 @@
   <PropertyGroup>
     <PackageId>KalshiSharp</PackageId>
     <VersionPrefix>1.2.0</VersionPrefix>
+    <Title>KalshiSharp</Title>
     <Description>Production-grade .NET 8 SDK for the Kalshi prediction market API. Features REST and WebSocket clients with RSA-PSS signing, automatic retry, rate limiting, circuit breaker, OpenTelemetry observability, and full async/await support.</Description>
-    <PackageTags>kalshi;trading;api;sdk;prediction-market;websocket;rest;finance;betting</PackageTags>
+    <PackageTags>kalshi;kalshi-api;trading;api;sdk;dotnet-sdk;prediction-market;prediction-markets;websocket;websocket-client;rest;finance;betting;fintech</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/Hurley451/KalshiSharp</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Hurley451/KalshiSharp</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Remove retired integer order and trade response fields that are absent from current Kalshi payloads.</PackageReleaseNotes>
+    <PackageReleaseNotes>Production-ready Kalshi API coverage for REST, WebSocket, V2 orders, historical data, portfolio, fixed-point pricing, and dependency injection.</PackageReleaseNotes>
     <IsPackable>true</IsPackable>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

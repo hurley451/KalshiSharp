@@ -1,0 +1,33 @@
+name: Question
+description: Ask about KalshiSharp usage, examples, or API coverage.
+title: "Question: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for using KalshiSharp. Include enough context for someone else to reproduce or answer the question.
+  - type: input
+    id: package-version
+    attributes:
+      label: KalshiSharp version
+      placeholder: "1.2.0"
+  - type: input
+    id: dotnet-version
+    attributes:
+      label: .NET version
+      placeholder: "8.0.x"
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What are you trying to do, and where are you stuck?
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Relevant code or API surface
+      description: Include a small snippet, endpoint, model, or WebSocket channel when helpful.
+      render: csharp
