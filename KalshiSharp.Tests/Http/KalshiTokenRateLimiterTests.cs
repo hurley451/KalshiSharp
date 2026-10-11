@@ -142,4 +142,25 @@ public sealed class KalshiTokenRateLimiterTests
         result.ExchangeIndex.Should().BeNull();
         result.TokenCost.Should().Be(2);
     }
+
+    [Fact]
+    public async Task ClassifyAsync_CreateQuoteUsesDocumentedTwoTokenWriteCost()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "https://example.test/trade-api/v2/communications/quotes")
+        {
+            Content = new StringContent("""{"rfq_id":"rfq-1"}""")
+        };
+
+        var result = await RateLimitingDelegatingHandler.ClassifyAsync(
+            request,
+            defaultTokenCost: 10,
+            maximumWriteTokenCost: 300,
+            cancellationToken: default);
+
+        result.IsWrite.Should().BeTrue();
+        result.IsBatch.Should().BeFalse();
+        result.TokenCost.Should().Be(2);
+    }
 }
