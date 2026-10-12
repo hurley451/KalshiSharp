@@ -75,6 +75,47 @@ internal sealed class CommunicationsClient(IKalshiHttpClient httpClient) : IComm
         }, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task<SingleQuoteResponse> GetQuoteAsync(string rfqId, string quoteId, CancellationToken cancellationToken = default) =>
+        _httpClient.SendAsync<SingleQuoteResponse>(new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = QuotePath(rfqId, quoteId)
+        }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task DeleteQuoteAsync(string rfqId, string quoteId, CancellationToken cancellationToken = default) =>
+        _httpClient.SendAsync(new KalshiRequest
+        {
+            Method = HttpMethod.Delete,
+            Path = QuotePath(rfqId, quoteId)
+        }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task AcceptQuoteAsync(
+        string rfqId,
+        string quoteId,
+        AcceptQuoteRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateAcceptQuoteRequest(request);
+
+        return _httpClient.SendAsync(new KalshiRequest
+        {
+            Method = HttpMethod.Put,
+            Path = $"{QuotePath(rfqId, quoteId)}/accept",
+            Content = request
+        }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task ConfirmQuoteAsync(string rfqId, string quoteId, CancellationToken cancellationToken = default) =>
+        _httpClient.SendAsync(new KalshiRequest
+        {
+            Method = HttpMethod.Put,
+            Path = $"{QuotePath(rfqId, quoteId)}/confirm"
+        }, cancellationToken);
+
     private static void ValidateCreateRfqRequest(CreateRfqRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -90,6 +131,20 @@ internal sealed class CommunicationsClient(IKalshiHttpClient httpClient) : IComm
         ThrowIfNullOrWhiteSpace(request.NoBid, nameof(request.NoBid));
         SettlementQuery.ValidateSubaccount(request.Subaccount);
     }
+
+    private static void ValidateAcceptQuoteRequest(AcceptQuoteRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!string.Equals(request.AcceptedSide, "yes", StringComparison.Ordinal) &&
+            !string.Equals(request.AcceptedSide, "no", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("AcceptedSide must be yes or no.", nameof(request));
+        }
+    }
+
+    private static string QuotePath(string rfqId, string quoteId) =>
+        $"{BasePath}/rfqs/{EscapeId(rfqId, nameof(rfqId))}/quotes/{EscapeId(quoteId, nameof(quoteId))}";
 
     private static string EscapeId(string id, string parameterName)
     {

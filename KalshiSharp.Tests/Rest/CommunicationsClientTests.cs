@@ -197,6 +197,63 @@ public sealed class CommunicationsClientTests
         result.Id.Should().Be("quote-1");
     }
 
+    [Fact]
+    public async Task GetAndDeleteQuoteAsync_UseScopedDocumentedPath()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new SingleQuoteResponse
+            {
+                Quote = CreateQuote("rfq/1", "quote/1")
+            }
+        };
+        var client = new CommunicationsClient(httpClient);
+
+        var result = await client.GetQuoteAsync("rfq/1", "quote/1");
+
+        httpClient.LastRequest!.Method.Should().Be(HttpMethod.Get);
+        httpClient.LastRequest.Path.Should().Be("/trade-api/v2/communications/rfqs/rfq%2F1/quotes/quote%2F1");
+        result.Quote.Id.Should().Be("quote/1");
+
+        await client.DeleteQuoteAsync("rfq/1", "quote/1");
+
+        httpClient.LastRequest.Method.Should().Be(HttpMethod.Delete);
+        httpClient.LastRequest.Path.Should().Be("/trade-api/v2/communications/rfqs/rfq%2F1/quotes/quote%2F1");
+    }
+
+    [Fact]
+    public async Task AcceptQuoteAsync_UsesScopedDocumentedPathAndBody()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new CreateQuoteResponse { Id = "unused" }
+        };
+        var client = new CommunicationsClient(httpClient);
+        var request = new AcceptQuoteRequest { AcceptedSide = "yes" };
+
+        await client.AcceptQuoteAsync("rfq-1", "quote-1", request);
+
+        httpClient.LastRequest!.Method.Should().Be(HttpMethod.Put);
+        httpClient.LastRequest.Path.Should().Be("/trade-api/v2/communications/rfqs/rfq-1/quotes/quote-1/accept");
+        httpClient.LastRequest.Content.Should().BeSameAs(request);
+    }
+
+    [Fact]
+    public async Task ConfirmQuoteAsync_UsesScopedDocumentedPathWithoutBody()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new CreateQuoteResponse { Id = "unused" }
+        };
+        var client = new CommunicationsClient(httpClient);
+
+        await client.ConfirmQuoteAsync("rfq-1", "quote-1");
+
+        httpClient.LastRequest!.Method.Should().Be(HttpMethod.Put);
+        httpClient.LastRequest.Path.Should().Be("/trade-api/v2/communications/rfqs/rfq-1/quotes/quote-1/confirm");
+        httpClient.LastRequest.Content.Should().BeNull();
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(101)]
@@ -243,6 +300,41 @@ public sealed class CommunicationsClientTests
         await action.Should().ThrowAsync<ArgumentOutOfRangeException>()
             .WithParameterName("subaccount");
     }
+
+    [Theory]
+    [InlineData("YES")]
+    [InlineData("buy")]
+    [InlineData("")]
+    public async Task AcceptQuoteAsync_RejectsInvalidAcceptedSide(string acceptedSide)
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new CreateQuoteResponse { Id = "unused" }
+        };
+        var client = new CommunicationsClient(httpClient);
+        var request = new AcceptQuoteRequest { AcceptedSide = acceptedSide };
+
+        var action = async () => await client.AcceptQuoteAsync("rfq-1", "quote-1", request);
+
+        await action.Should().ThrowAsync<ArgumentException>()
+            .WithParameterName("request");
+    }
+
+    private static QuoteResponse CreateQuote(string rfqId, string quoteId) =>
+        new()
+        {
+            Id = quoteId,
+            RfqId = rfqId,
+            CreatorId = "quote-creator",
+            RfqCreatorId = "rfq-creator",
+            MarketTicker = "MARKET-ABC",
+            ContractsFp = "3.00",
+            YesBidDollars = "0.5600",
+            NoBidDollars = "0.4400",
+            CreatedTs = DateTimeOffset.FromUnixTimeSeconds(1791720000),
+            UpdatedTs = DateTimeOffset.FromUnixTimeSeconds(1791720060),
+            Status = "open"
+        };
 
     private sealed class RecordingHttpClient : IKalshiHttpClient
     {

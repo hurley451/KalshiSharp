@@ -177,3 +177,10 @@ public sealed record CreateQuoteRequest
     /// <summary>Subaccount for the quote, including zero for the primary account.</summary>
     public int? Subaccount { get; init; }
 }
+
+/// <summary>Request for accepting a quote scoped to its RFQ.</summary>
+public sealed record AcceptQuoteRequest
+{
+    /// <summary>The quote side to accept. Valid values are <c>yes</c> and <c>no</c>.</summary>
+    public required string AcceptedSide { get; init; }
+}
