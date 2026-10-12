@@ -53,4 +53,38 @@ public interface ICommunicationsClient
     /// <returns>The created quote ID.</returns>
     Task<CreateQuoteResponse> CreateQuoteAsync(CreateQuoteRequest request, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
+
+    /// <summary>Gets one quote scoped to its RFQ.</summary>
+    /// <param name="rfqId">RFQ ID.</param>
+    /// <param name="quoteId">Quote ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The requested quote.</returns>
+    Task<SingleQuoteResponse> GetQuoteAsync(string rfqId, string quoteId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    /// <summary>Deletes one quote scoped to its RFQ.</summary>
+    /// <param name="rfqId">RFQ ID.</param>
+    /// <param name="quoteId">Quote ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task DeleteQuoteAsync(string rfqId, string quoteId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    /// <summary>Accepts one quote scoped to its RFQ.</summary>
+    /// <param name="rfqId">RFQ ID.</param>
+    /// <param name="quoteId">Quote ID.</param>
+    /// <param name="request">Quote acceptance request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task AcceptQuoteAsync(
+        string rfqId,
+        string quoteId,
+        AcceptQuoteRequest request,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    /// <summary>Confirms one accepted quote scoped to its RFQ.</summary>
+    /// <param name="rfqId">RFQ ID.</param>
+    /// <param name="quoteId">Quote ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task ConfirmQuoteAsync(string rfqId, string quoteId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
 }

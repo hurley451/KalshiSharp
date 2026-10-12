@@ -543,6 +543,13 @@ var quote = await communications.CreateQuoteAsync(new CreateQuoteRequest
     RestRemainder = false,
     PostOnly = true
 });
+
+var scopedQuote = await communications.GetQuoteAsync(createdRfq.Id, quote.Id);
+await communications.AcceptQuoteAsync(
+    createdRfq.Id,
+    scopedQuote.Quote.Id,
+    new AcceptQuoteRequest { AcceptedSide = "yes" });
+await communications.ConfirmQuoteAsync(createdRfq.Id, scopedQuote.Quote.Id);
 ```
 
 ### WebSocket Real-Time Updates
