@@ -35,6 +35,12 @@ public interface IPortfolioClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support subaccount transfers.");
 
+    /// <summary>Transfers funds between exchange instances or shards within the account.</summary>
+    Task<IntraAccountTransferResponse> IntraAccountTransferAsync(
+        IntraAccountTransferRequest request,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support intra-account transfers.");
+
     /// <summary>Lists subaccount transfer history.</summary>
     Task<SubaccountTransfersResponse> ListSubaccountTransfersAsync(
         SubaccountTransferQuery? query = null,

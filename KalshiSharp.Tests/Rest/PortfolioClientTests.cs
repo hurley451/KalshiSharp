@@ -747,6 +747,127 @@ public sealed class PortfolioClientTests : IDisposable
     }
 
     [Fact]
+    public async Task IntraAccountTransferAsync_SendsCurrentPrimaryAccountRequestShape()
+    {
+        var clientTransferId = Guid.Parse("4f31d0d0-ae4d-4d4f-94a4-28bc84f0e81f");
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/intra_exchange_instance_transfer")
+                .UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"transfer_id":"transfer-123"}"""));
+
+        var result = await _portfolioClient.IntraAccountTransferAsync(new IntraAccountTransferRequest
+        {
+            ClientTransferId = clientTransferId,
+            Source = ExchangeInstance.EventContract,
+            Destination = ExchangeInstance.Margined,
+            Amount = 1_250_000,
+            SourceExchangeShard = 0,
+            DestinationExchangeShard = 2
+        });
+
+        result.TransferId.Should().Be("transfer-123");
+        _server.LogEntries.Should().ContainSingle();
+        var requestBody = _server.LogEntries[0].RequestMessage!.Body;
+        requestBody.Should().NotBeNull();
+        using var body = JsonDocument.Parse(requestBody!);
+        body.RootElement.GetProperty("client_transfer_id").GetString().Should().Be(clientTransferId.ToString());
+        body.RootElement.GetProperty("source").GetString().Should().Be("event_contract");
+        body.RootElement.GetProperty("destination").GetString().Should().Be("margined");
+        body.RootElement.GetProperty("amount").GetInt64().Should().Be(1_250_000);
+        body.RootElement.GetProperty("source_exchange_shard").GetInt32().Should().Be(0);
+        body.RootElement.GetProperty("destination_exchange_shard").GetInt32().Should().Be(2);
+        body.RootElement.TryGetProperty("source_subaccount", out _).Should().BeFalse();
+        body.RootElement.TryGetProperty("destination_subaccount", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IntraAccountTransferAsync_AllowsSubaccountTransferWithoutClientId()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/intra_exchange_instance_transfer")
+                .UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"transfer_id":"transfer-456"}"""));
+
+        await _portfolioClient.IntraAccountTransferAsync(new IntraAccountTransferRequest
+        {
+            Source = ExchangeInstance.EventContract,
+            Destination = ExchangeInstance.EventContract,
+            Amount = 10_000,
+            SourceSubaccount = 0,
+            DestinationSubaccount = 3
+        });
+
+        var requestBody = _server.LogEntries[0].RequestMessage!.Body;
+        requestBody.Should().NotBeNull();
+        using var body = JsonDocument.Parse(requestBody!);
+        body.RootElement.TryGetProperty("client_transfer_id", out _).Should().BeFalse();
+        body.RootElement.GetProperty("source_subaccount").GetInt32().Should().Be(0);
+        body.RootElement.GetProperty("destination_subaccount").GetInt32().Should().Be(3);
+    }
+
+    [Fact]
+    public async Task IntraAccountTransferAsync_ValidatesDocumentedBoundaries()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _portfolioClient.IntraAccountTransferAsync(new IntraAccountTransferRequest
+            {
+                ClientTransferId = Guid.Empty,
+                Source = ExchangeInstance.EventContract,
+                Destination = ExchangeInstance.Margined,
+                Amount = 1
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.IntraAccountTransferAsync(new IntraAccountTransferRequest
+            {
+                Source = (ExchangeInstance)99,
+                Destination = ExchangeInstance.Margined,
+                Amount = 1
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.IntraAccountTransferAsync(new IntraAccountTransferRequest
+            {
+                Source = ExchangeInstance.EventContract,
+                Destination = ExchangeInstance.Margined,
+                Amount = 0
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.IntraAccountTransferAsync(new IntraAccountTransferRequest
+            {
+                Source = ExchangeInstance.EventContract,
+                Destination = ExchangeInstance.Margined,
+                Amount = 1,
+                SourceExchangeShard = 101
+            }));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _portfolioClient.IntraAccountTransferAsync(new IntraAccountTransferRequest
+            {
+                Source = ExchangeInstance.EventContract,
+                Destination = ExchangeInstance.Margined,
+                Amount = 1,
+                DestinationSubaccount = 64
+            }));
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _portfolioClient.IntraAccountTransferAsync(new IntraAccountTransferRequest
+            {
+                ClientTransferId = Guid.NewGuid(),
+                Source = ExchangeInstance.EventContract,
+                Destination = ExchangeInstance.EventContract,
+                Amount = 1,
+                SourceSubaccount = 0,
+                DestinationSubaccount = 1
+            }));
+    }
+
+    [Fact]
     public async Task ListSubaccountTransfersAsync_ParsesTransfersAndPagination()
     {
         _server.Given(Request.Create()
