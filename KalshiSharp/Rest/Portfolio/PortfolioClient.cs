@@ -91,6 +91,23 @@ internal sealed class PortfolioClient : IPortfolioClient
     }
 
     /// <inheritdoc />
+    public Task<IntraAccountTransferResponse> IntraAccountTransferAsync(
+        IntraAccountTransferRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateIntraAccountTransfer(request);
+
+        var httpRequest = new KalshiRequest
+        {
+            Method = HttpMethod.Post,
+            Path = $"{BasePath}/intra_exchange_instance_transfer",
+            Content = request
+        };
+        return _httpClient.SendAsync<IntraAccountTransferResponse>(httpRequest, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<SubaccountTransfersResponse> ListSubaccountTransfersAsync(
         SubaccountTransferQuery? query = null,
         CancellationToken cancellationToken = default)
@@ -380,6 +397,56 @@ internal sealed class PortfolioClient : IPortfolioClient
             throw new ArgumentOutOfRangeException(
                 nameof(request),
                 "Exchange index must be nonnegative.");
+        }
+    }
+
+    private static void ValidateIntraAccountTransfer(IntraAccountTransferRequest request)
+    {
+        if (!Enum.IsDefined(request.Source))
+        {
+            throw new ArgumentOutOfRangeException(nameof(request), "Source exchange instance is invalid.");
+        }
+
+        if (!Enum.IsDefined(request.Destination))
+        {
+            throw new ArgumentOutOfRangeException(nameof(request), "Destination exchange instance is invalid.");
+        }
+
+        if (request.ClientTransferId == Guid.Empty)
+        {
+            throw new ArgumentException("Client transfer ID must be a non-empty UUID when supplied.", nameof(request));
+        }
+
+        if (request.Amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                "Transfer amount must be greater than zero centicents.");
+        }
+
+        ValidateExchangeShard(request.SourceExchangeShard);
+        ValidateExchangeShard(request.DestinationExchangeShard);
+        SettlementQuery.ValidateSubaccount(request.SourceSubaccount);
+        SettlementQuery.ValidateSubaccount(request.DestinationSubaccount);
+
+        if (request.ClientTransferId.HasValue
+            && (request.SourceSubaccount.GetValueOrDefault() != 0
+                || request.DestinationSubaccount.GetValueOrDefault() != 0))
+        {
+            throw new ArgumentException(
+                "Client transfer IDs are only supported for primary-account intra-account transfers.",
+                nameof(request));
+        }
+    }
+
+    private static void ValidateExchangeShard(int? exchangeShard)
+    {
+        if (exchangeShard is < 0 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(exchangeShard),
+                exchangeShard,
+                "Exchange shard must be between 0 and 100.");
         }
     }
 }

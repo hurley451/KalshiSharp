@@ -1,5 +1,6 @@
 using System.Globalization;
 using KalshiSharp.Models.Common;
+using KalshiSharp.Models.Enums;
 
 namespace KalshiSharp.Models.Requests;
 
@@ -95,6 +96,37 @@ public sealed record CreateSubaccountTransferRequest
 
     /// <summary>Exchange shard to apply the transfer on. Defaults to 0 when omitted.</summary>
     public int? ExchangeIndex { get; init; }
+}
+
+/// <summary>Request for transferring funds between exchange instances or shards within one account.</summary>
+public sealed record IntraAccountTransferRequest
+{
+    /// <summary>
+    /// Optional client-generated UUID for duplicate prevention. Only supported when both sides use the primary
+    /// account and must be reused only for identical retries.
+    /// </summary>
+    public Guid? ClientTransferId { get; init; }
+
+    /// <summary>Source exchange instance.</summary>
+    public required ExchangeInstance Source { get; init; }
+
+    /// <summary>Destination exchange instance.</summary>
+    public required ExchangeInstance Destination { get; init; }
+
+    /// <summary>Amount to transfer, in centicents.</summary>
+    public required long Amount { get; init; }
+
+    /// <summary>Source exchange shard index. Defaults to 0 when omitted.</summary>
+    public int? SourceExchangeShard { get; init; }
+
+    /// <summary>Destination exchange shard index. Defaults to 0 when omitted.</summary>
+    public int? DestinationExchangeShard { get; init; }
+
+    /// <summary>Source subaccount number. Defaults to primary account 0 when omitted.</summary>
+    public int? SourceSubaccount { get; init; }
+
+    /// <summary>Destination subaccount number. Defaults to primary account 0 when omitted.</summary>
+    public int? DestinationSubaccount { get; init; }
 }
 
 /// <summary>Request for updating subaccount netting.</summary>

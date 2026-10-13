@@ -17,7 +17,7 @@ where optional clients are introduced.
 | Multivariate collections | List/get collections with associated events, price-level structures, and price ranges |
 | Orders V2 | Create, amend, decrease, cancel, cancel all, batch create/cancel, queue positions, and multiple order books |
 | Order groups | List, get, create, update limit, trigger, reset, and delete |
-| Portfolio | Balance, positions, fills, settlements, subaccount transfers, target allocation, and resting order value |
+| Portfolio | Balance, positions, fills, settlements, subaccount transfers, intra-account transfers, target allocation, and resting order value |
 | Historical data | Cutoff, markets, candlesticks, trades, fills, orders, and positions |
 | Incentive programs | Liquidity, margin maker-volume, and margin taker-volume program shapes |
 | Live data | Generic, legacy, batch, event, game-stat, weather index, and weather calibration endpoints |

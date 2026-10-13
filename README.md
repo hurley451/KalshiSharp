@@ -417,6 +417,18 @@ var transferHistory = await client.Portfolio.ListSubaccountTransfersAsync(new Su
     Limit = 100
 });
 
+// Transfer funds between exchange instances or shards. Amount is in centicents.
+var intraAccountTransfer = await client.Portfolio.IntraAccountTransferAsync(new IntraAccountTransferRequest
+{
+    ClientTransferId = Guid.NewGuid(), // primary-account retries only
+    Source = ExchangeInstance.EventContract,
+    Destination = ExchangeInstance.Margined,
+    Amount = 1_000_000,
+    SourceExchangeShard = 0,
+    DestinationExchangeShard = 1
+});
+Console.WriteLine($"Transfer ID: {intraAccountTransfer.TransferId}");
+
 // FCM-only resting order summary
 var resting = await client.Portfolio.GetTotalRestingOrderValueAsync();
 Console.WriteLine($"Resting order value: {resting.TotalRestingOrderValue} cents");
