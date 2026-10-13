@@ -9,6 +9,8 @@ using KalshiSharp.Http;
 using KalshiSharp.Models.Enums;
 using KalshiSharp.Models.Requests;
 using KalshiSharp.Rest.Portfolio;
+using KalshiSharp.Models.Responses;
+using KalshiSharp.Serialization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using WireMock.RequestBuilders;
@@ -1005,6 +1007,79 @@ public sealed class PortfolioClientTests : IDisposable
         });
 
         result.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListSettlementsAsync_PreservesMixedScalarOutcomesAndFractionalPrecision()
+    {
+        _server.Given(Request.Create().WithPath("/trade-api/v2/portfolio/settlements").WithParam("subaccount", "0").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithHeader("Content-Type", "application/json").WithBody("""
+            {"settlements":[
+              {"ticker":"YES","exchange_index":0,"event_ticker":"EVENT","market_result":"yes","yes_count_fp":"2.50","yes_total_cost_dollars":"0.108025","no_count_fp":"0.00","no_total_cost_dollars":"0.000000","fee_cost":"0.000125","revenue":250,"settled_time":"2026-10-12T12:00:00Z","value":100},
+              {"ticker":"NO","exchange_index":0,"event_ticker":"EVENT","market_result":"no","yes_count_fp":"0.00","yes_total_cost_dollars":"0.000000","no_count_fp":"0.25","no_total_cost_dollars":"0.108025","revenue":25,"settled_time":"2026-10-12T12:00:00Z","fee_cost":"0.000001","value":null},
+              {"ticker":"SCALAR","exchange_index":0,"event_ticker":"EVENT","market_result":"scalar","yes_count_fp":"1.25","yes_total_cost_dollars":"0.540125","no_count_fp":"0.50","no_total_cost_dollars":"0.123456","revenue":62,"settled_time":"2026-10-12T12:00:00Z","fee_cost":"0.000001","value":50}
+            ],"cursor":"next-page"}
+            """));
+        var response = await _portfolioClient.ListSettlementsAsync(new SettlementQuery { Subaccount = 0 });
+        response.Settlements.Select(row => row.Outcome).Should().Equal(SettlementOutcome.Yes, SettlementOutcome.No, SettlementOutcome.Scalar);
+        response.Settlements[0].MarketResult.Should().Be(OrderSide.Yes);
+        response.Settlements[1].MarketResult.Should().Be(OrderSide.No);
+        response.Settlements[2].MarketResult.Should().BeNull();
+        response.Settlements[0].YesCountFp.Should().Be("2.50");
+        response.Settlements[0].YesTotalCostDollars.Should().Be("0.108025");
+        response.Settlements[2].FeeCost.Should().Be("0.000001");
+        response.Settlements[2].Value.Should().Be(50);
+        response.Settlements[1].Value.Should().BeNull();
+        response.Cursor.Should().Be("next-page");
+    }
+
+    [Theory]
+    [InlineData(OrderSide.Yes, "yes")]
+    [InlineData(OrderSide.No, "no")]
+    public void SettlementResponse_LegacyInitializerRetainsWireRepresentation(OrderSide side, string wire)
+    {
+        var response = new SettlementResponse { Ticker = "MARKET", MarketResult = side };
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(response, KalshiJsonOptions.Default));
+        document.RootElement.GetProperty("market_result").GetString().Should().Be(wire);
+        document.RootElement.TryGetProperty("outcome", out _).Should().BeFalse();
+        response.MarketResult.Should().Be(side);
+    }
+
+    [Fact]
+    public void SettlementResponse_NullAndWithExpressionsKeepOneCanonicalOutcome()
+    {
+        var unspecified = new SettlementResponse { Ticker = "MARKET" };
+        unspecified.Outcome.Should().BeNull();
+        unspecified.MarketResult.Should().BeNull();
+        var scalar = unspecified with { Outcome = SettlementOutcome.Scalar };
+        scalar.MarketResult.Should().BeNull();
+        var binary = scalar with { MarketResult = OrderSide.No };
+        binary.Outcome.Should().Be(SettlementOutcome.No);
+        (binary with { MarketResult = null }).Outcome.Should().BeNull();
+        var lastBinary = new SettlementResponse { Ticker = "MARKET", Outcome = SettlementOutcome.Scalar, MarketResult = OrderSide.Yes };
+        lastBinary.Outcome.Should().Be(SettlementOutcome.Yes);
+        var lastScalar = new SettlementResponse { Ticker = "MARKET", MarketResult = OrderSide.Yes, Outcome = SettlementOutcome.Scalar };
+        lastScalar.MarketResult.Should().BeNull();
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(lastScalar, KalshiJsonOptions.Default));
+        json.RootElement.GetProperty("market_result").GetString().Should().Be("scalar");
+        json.RootElement.EnumerateObject().Count(field => field.Name == "market_result").Should().Be(1);
+    }
+
+    [Fact]
+    public void SettlementResponse_UnknownWireOutcomeIsRejected()
+    {
+        Action parse = () => JsonSerializer.Deserialize<SettlementResponse>("""{"ticker":"MARKET","market_result":"future-result"}""", KalshiJsonOptions.Default);
+        parse.Should().Throw<JsonException>();
+    }
+
+    [Fact]
+    public async Task ListSettlementsAsync_PreservesCursorOnAnEmptyPage()
+    {
+        _server.Given(Request.Create().WithPath("/trade-api/v2/portfolio/settlements").WithParam("cursor", "empty-page").WithParam("subaccount", "0").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithHeader("Content-Type", "application/json").WithBody("""{"settlements":[],"cursor":"following-page"}"""));
+        var response = await _portfolioClient.ListSettlementsAsync(new SettlementQuery { Cursor = "empty-page", Subaccount = 0 });
+        response.Settlements.Should().BeEmpty();
+        response.Cursor.Should().Be("following-page");
     }
 
     [Fact]

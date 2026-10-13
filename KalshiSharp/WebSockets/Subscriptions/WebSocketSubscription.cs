@@ -129,6 +129,11 @@ internal sealed record SubscriptionParams
     [JsonPropertyName("skip_ticker_ack")]
     public bool? SkipTickerAck { get; init; }
 
+    /// <summary>Explicit orderbook price convention; omitted for other subscription commands.</summary>
+    [JsonPropertyName("use_yes_price")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? UseYesPrice { get; init; }
+
     /// <summary>Existing subscription identifiers to update.</summary>
     [JsonPropertyName("sids")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

@@ -570,7 +570,10 @@ await using var wsClient = new KalshiWebSocketClient(new KalshiClientOptions
 
 // Connect and subscribe
 await wsClient.ConnectAsync();
-await wsClient.SubscribeAsync(OrderBookSubscription.ForMarkets("TICKER-ABC"));
+await wsClient.SubscribeAsync(OrderBookSubscription.ForMarkets("TICKER-ABC") with
+{
+    UseYesPrice = true
+});
 await wsClient.SubscribeAsync(TradeSubscription.ForMarkets("TICKER-ABC"));
 
 // Process messages
