@@ -146,6 +146,54 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task SubscribeAsync_OrderBookOmittedConventionPreservesExistingWireShape()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+        await _client.SubscribeAsync(OrderBookSubscription.ForMarkets("MARKET-ABC"));
+        _mockConnection.SentMessages[^1].Should().NotContain("use_yes_price");
+    }
+
+    [Theory]
+    [InlineData(true, "true")]
+    [InlineData(false, "false")]
+    public async Task SubscribeAsync_OrderBookSendsExplicitPriceConvention(bool useYesPrice, string wireValue)
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+        var subscription = OrderBookSubscription.ForMarkets("MARKET-ABC") with { UseYesPrice = useYesPrice };
+        await _client.SubscribeAsync(subscription);
+        _mockConnection.SentMessages[^1].Should().Contain($"\"use_yes_price\":{wireValue}");
+        await _client.UnsubscribeAsync(subscription);
+        _mockConnection.SentMessages[^1].Should().NotContain("use_yes_price");
+    }
+
+    [Fact]
+    public async Task ReconnectAsync_ReplaysExplicitOrderBookPriceConvention()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+        await _client.SubscribeAsync(OrderBookSubscription.ForMarkets("MARKET-ABC") with { UseYesPrice = true });
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        while (_mockConnection.SentMessages.Count < 2 && DateTimeOffset.UtcNow < deadline)
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
+        var messages = _mockConnection.SentMessages;
+        messages.Should().HaveCountGreaterOrEqualTo(2);
+        messages[0].Should().Contain("\"use_yes_price\":true");
+        messages[1].Should().Contain("\"use_yes_price\":true");
+        messages[1].Should().Contain("\"market_tickers\":[\"MARKET-ABC\"]");
+    }
+
+    [Fact]
+    public async Task SubscribeAsync_OtherChannelDoesNotSendOrderBookConvention()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+        await _client.SubscribeAsync(TickerSubscription.ForMarkets("MARKET-ABC"));
+        _mockConnection.SentMessages[^1].Should().NotContain("use_yes_price");
+    }
+
+    [Fact]
     public async Task UnsubscribeAsync_SendsUnsubscribeCommand()
     {
         // Arrange
@@ -987,7 +1035,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
 
         public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged;
 
-        public IReadOnlyList<string> SentMessages => _sentMessages;
+        public IReadOnlyList<string> SentMessages { get { lock (_lock) return _sentMessages.ToArray(); } }
 
         public void SetupConnect()
         {
@@ -1015,7 +1063,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         public Task SendAsync(ReadOnlyMemory<byte> message, CancellationToken cancellationToken = default)
         {
             var json = Encoding.UTF8.GetString(message.Span);
-            _sentMessages.Add(json);
+            lock (_lock) _sentMessages.Add(json);
             return Task.CompletedTask;
         }
 

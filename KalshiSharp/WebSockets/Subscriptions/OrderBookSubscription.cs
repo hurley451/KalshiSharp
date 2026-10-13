@@ -16,6 +16,18 @@ public sealed record OrderBookSubscription : WebSocketSubscription
     public override string Channel => ChannelName;
 
     /// <summary>
+    /// Explicitly selects YES-leg pricing on both sides when true, or legacy
+    /// outcome-leg pricing when false. Null omits the option and preserves server defaults.
+    /// </summary>
+    public bool? UseYesPrice { get; init; }
+
+    /// <inheritdoc />
+    internal override SubscriptionParams CreateSubscribeParams() => base.CreateSubscribeParams() with
+    {
+        UseYesPrice = UseYesPrice
+    };
+
+    /// <summary>
     /// Creates an order book subscription for the specified market tickers.
     /// </summary>
     /// <param name="marketTickers">The market tickers to subscribe to.</param>

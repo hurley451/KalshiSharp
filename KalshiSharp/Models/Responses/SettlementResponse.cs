@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using KalshiSharp.Models.Common;
 using KalshiSharp.Models.Enums;
 
@@ -25,8 +26,23 @@ public sealed record SettlementResponse
     /// <summary>Event ticker.</summary>
     public string? EventTicker { get; init; }
 
-    /// <summary>Resolved market outcome.</summary>
-    public OrderSide? MarketResult { get; init; }
+    /// <summary>Resolved market outcome, including scalar settlements.</summary>
+    [JsonPropertyName("market_result")]
+    public SettlementOutcome? Outcome { get; init; }
+
+    /// <summary>Compatibility projection for binary outcomes. Scalar settlements return null; use <see cref="Outcome"/> for the complete result.</summary>
+    [JsonIgnore]
+    public OrderSide? MarketResult
+    {
+        get => Outcome switch { SettlementOutcome.Yes => OrderSide.Yes, SettlementOutcome.No => OrderSide.No, _ => null };
+        init => Outcome = value switch
+        {
+            OrderSide.Yes => SettlementOutcome.Yes,
+            OrderSide.No => SettlementOutcome.No,
+            null => null,
+            _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unsupported binary settlement outcome.")
+        };
+    }
 
     /// <summary>YES position count as a fixed-point quantity.</summary>
     public string? YesCountFp { get; init; }
@@ -49,6 +65,6 @@ public sealed record SettlementResponse
     /// <summary>Fees paid in fixed-point dollars.</summary>
     public string? FeeCost { get; init; }
 
-    /// <summary>Settlement value, in cents.</summary>
+    /// <summary>Payout per single YES contract, in cents. This is not the total settlement revenue.</summary>
     public long? Value { get; init; }
 }
