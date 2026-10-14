@@ -1,8 +1,10 @@
+using System.Text.Json;
 using FluentAssertions;
 using KalshiSharp.Http;
 using KalshiSharp.Models.Requests;
 using KalshiSharp.Models.Responses;
 using KalshiSharp.Rest.Communications;
+using KalshiSharp.Serialization;
 using Xunit;
 
 namespace KalshiSharp.Tests.Rest;
@@ -23,6 +25,109 @@ public sealed class CommunicationsClientTests
         httpClient.LastRequest!.Method.Should().Be(HttpMethod.Get);
         httpClient.LastRequest.Path.Should().Be("/trade-api/v2/communications/id");
         result.CommunicationsId.Should().Be("comm-123");
+    }
+
+    [Fact]
+    public async Task ListBlockTradeProposalsAsync_UsesDocumentedFiltersAndParsesResponse()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new BlockTradeProposalsResponse
+            {
+                BlockTradeProposals =
+                [
+                    new BlockTradeProposalResponse
+                    {
+                        Id = "proposal-1",
+                        ProposerUserId = "proposer",
+                        BuyerUserId = "buyer",
+                        SellerUserId = "seller",
+                        MarketTicker = "MARKET-ABC",
+                        PriceCentiCents = 5600,
+                        Centicount = 10000,
+                        MakerSide = "yes",
+                        ExpirationTs = DateTimeOffset.FromUnixTimeSeconds(1791723600),
+                        Status = "open",
+                        CreatedTs = DateTimeOffset.FromUnixTimeSeconds(1791720000),
+                        UpdatedTs = DateTimeOffset.FromUnixTimeSeconds(1791720060)
+                    }
+                ],
+                Cursor = "next"
+            }
+        };
+        var client = new CommunicationsClient(httpClient);
+
+        var result = await client.ListBlockTradeProposalsAsync(new BlockTradeProposalQuery
+        {
+            Limit = 100,
+            Cursor = "cursor-1",
+            MarketTicker = "MARKET-ABC",
+            Status = "open"
+        });
+
+        httpClient.LastRequest!.Method.Should().Be(HttpMethod.Get);
+        httpClient.LastRequest.Path.Should().Be(
+            "/trade-api/v2/communications/block-trade-proposals?limit=100&cursor=cursor-1&market_ticker=MARKET-ABC&status=open");
+        result.Items.Should().ContainSingle().Which.Id.Should().Be("proposal-1");
+        result.Cursor.Should().Be("next");
+    }
+
+    [Fact]
+    public async Task ProposeBlockTradeAsync_UsesDocumentedEndpointAndBody()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new ProposeBlockTradeResponse { BlockTradeProposalId = "proposal-1" }
+        };
+        var client = new CommunicationsClient(httpClient);
+        var request = new ProposeBlockTradeRequest
+        {
+            BuyerUserId = "buyer",
+            SellerUserId = "seller",
+            MarketTicker = "MARKET-ABC",
+            PriceCentiCents = 5600,
+            Centicount = 10000,
+            MakerSide = "yes",
+            ExpirationTs = DateTimeOffset.FromUnixTimeSeconds(1791723600),
+            BuyerSubaccount = 0,
+            SellerSubtraderId = "seller-subtrader"
+        };
+
+        var result = await client.ProposeBlockTradeAsync(request);
+
+        httpClient.LastRequest!.Method.Should().Be(HttpMethod.Post);
+        httpClient.LastRequest.Path.Should().Be("/trade-api/v2/communications/block-trade-proposals");
+        httpClient.LastRequest.Content.Should().BeSameAs(request);
+        using var body = JsonDocument.Parse(JsonSerializer.Serialize(
+            httpClient.LastRequest.Content,
+            httpClient.LastRequest.Content!.GetType(),
+            KalshiJsonOptions.Default));
+        body.RootElement.GetProperty("expiration_ts").GetString()
+            .Should().Be("2026-10-11T13:00:00.0000000Z");
+        result.BlockTradeProposalId.Should().Be("proposal-1");
+    }
+
+    [Fact]
+    public async Task AcceptBlockTradeProposalAsync_EscapesIdAndSendsOptionalBody()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new ProposeBlockTradeResponse { BlockTradeProposalId = "unused" }
+        };
+        var client = new CommunicationsClient(httpClient);
+        var request = new AcceptBlockTradeProposalRequest { Subaccount = 31 };
+
+        await client.AcceptBlockTradeProposalAsync("proposal/1", request);
+
+        httpClient.LastRequest!.Method.Should().Be(HttpMethod.Post);
+        httpClient.LastRequest.Path.Should().Be("/trade-api/v2/communications/block-trade-proposals/proposal%2F1/accept");
+        httpClient.LastRequest.Content.Should().BeSameAs(request);
+
+        await client.AcceptBlockTradeProposalAsync("proposal-2");
+
+        httpClient.LastRequest.Method.Should().Be(HttpMethod.Post);
+        httpClient.LastRequest.Path.Should().Be("/trade-api/v2/communications/block-trade-proposals/proposal-2/accept");
+        httpClient.LastRequest.Content.Should().BeNull();
     }
 
     [Fact]
@@ -278,6 +383,19 @@ public sealed class CommunicationsClientTests
         action.Should().Throw<ArgumentOutOfRangeException>().WithParameterName(nameof(QuoteQuery.Limit));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(101)]
+    public void BlockTradeProposalQuery_RejectsOutOfRangeLimit(int limit)
+    {
+        var query = new BlockTradeProposalQuery { Limit = limit };
+
+        var action = () => query.ToQueryString();
+
+        action.Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName(nameof(BlockTradeProposalQuery.Limit));
+    }
+
     [Fact]
     public async Task CreateQuoteAsync_RejectsInvalidSubaccount()
     {
@@ -318,6 +436,83 @@ public sealed class CommunicationsClientTests
 
         await action.Should().ThrowAsync<ArgumentException>()
             .WithParameterName("request");
+    }
+
+    [Theory]
+    [InlineData(0, 10000, "yes")]
+    [InlineData(5600, 0, "yes")]
+    [InlineData(5600, 10000, "YES")]
+    public async Task ProposeBlockTradeAsync_ValidatesDocumentedBoundaries(
+        long priceCentiCents,
+        long centicount,
+        string makerSide)
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new ProposeBlockTradeResponse { BlockTradeProposalId = "unused" }
+        };
+        var client = new CommunicationsClient(httpClient);
+        var request = new ProposeBlockTradeRequest
+        {
+            BuyerUserId = "buyer",
+            SellerUserId = "seller",
+            MarketTicker = "MARKET-ABC",
+            PriceCentiCents = priceCentiCents,
+            Centicount = centicount,
+            MakerSide = makerSide,
+            ExpirationTs = DateTimeOffset.FromUnixTimeSeconds(1791723600)
+        };
+
+        var action = async () => await client.ProposeBlockTradeAsync(request);
+
+        await action.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task ProposeBlockTradeAsync_RejectsAmbiguousSubtraderAndSubaccount()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new ProposeBlockTradeResponse { BlockTradeProposalId = "unused" }
+        };
+        var client = new CommunicationsClient(httpClient);
+        var request = new ProposeBlockTradeRequest
+        {
+            BuyerUserId = "buyer",
+            SellerUserId = "seller",
+            MarketTicker = "MARKET-ABC",
+            PriceCentiCents = 5600,
+            Centicount = 10000,
+            MakerSide = "yes",
+            ExpirationTs = DateTimeOffset.FromUnixTimeSeconds(1791723600),
+            BuyerSubtraderId = "buyer-subtrader",
+            BuyerSubaccount = 1
+        };
+
+        var action = async () => await client.ProposeBlockTradeAsync(request);
+
+        await action.Should().ThrowAsync<ArgumentException>()
+            .WithParameterName("buyer");
+    }
+
+    [Fact]
+    public async Task AcceptBlockTradeProposalAsync_RejectsAmbiguousAcceptanceIdentity()
+    {
+        var httpClient = new RecordingHttpClient
+        {
+            Response = new ProposeBlockTradeResponse { BlockTradeProposalId = "unused" }
+        };
+        var client = new CommunicationsClient(httpClient);
+        var request = new AcceptBlockTradeProposalRequest
+        {
+            SubtraderId = "subtrader",
+            Subaccount = 1
+        };
+
+        var action = async () => await client.AcceptBlockTradeProposalAsync("proposal-1", request);
+
+        await action.Should().ThrowAsync<ArgumentException>()
+            .WithParameterName("acceptance");
     }
 
     private static QuoteResponse CreateQuote(string rfqId, string quoteId) =>

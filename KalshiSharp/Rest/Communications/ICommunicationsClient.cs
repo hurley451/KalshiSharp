@@ -13,6 +13,34 @@ public interface ICommunicationsClient
     /// <returns>The communications ID response.</returns>
     Task<CommunicationsIdResponse> GetCommunicationsIdAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Lists block-trade proposals visible to the caller.</summary>
+    /// <param name="query">Optional block-trade proposal filters.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Block-trade proposals matching the query.</returns>
+    Task<BlockTradeProposalsResponse> ListBlockTradeProposalsAsync(
+        BlockTradeProposalQuery? query = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    /// <summary>Creates a block-trade proposal.</summary>
+    /// <param name="request">Block-trade proposal request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The created block-trade proposal ID.</returns>
+    Task<ProposeBlockTradeResponse> ProposeBlockTradeAsync(
+        ProposeBlockTradeRequest request,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    /// <summary>Accepts a block-trade proposal.</summary>
+    /// <param name="blockTradeProposalId">Block-trade proposal ID.</param>
+    /// <param name="request">Optional acceptance identity request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task AcceptBlockTradeProposalAsync(
+        string blockTradeProposalId,
+        AcceptBlockTradeProposalRequest? request = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
     /// <summary>Lists RFQs visible to the caller.</summary>
     /// <param name="query">Optional RFQ filters.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
