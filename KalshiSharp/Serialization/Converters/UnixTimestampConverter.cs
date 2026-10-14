@@ -64,3 +64,25 @@ public sealed class NullableUnixTimestampConverter : JsonConverter<DateTimeOffse
         }
     }
 }
+
+/// <summary>
+/// JSON converter that writes <see cref="DateTimeOffset"/> values as ISO 8601 UTC date-time strings.
+/// </summary>
+public sealed class IsoDateTimeOffsetConverter : JsonConverter<DateTimeOffset>
+{
+    /// <inheritdoc/>
+    public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return reader.TokenType switch
+        {
+            JsonTokenType.String => DateTimeOffset.Parse(reader.GetString()!, CultureInfo.InvariantCulture),
+            _ => throw new JsonException($"Cannot convert {reader.TokenType} to DateTimeOffset")
+        };
+    }
+
+    /// <inheritdoc/>
+    public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
+    }
+}

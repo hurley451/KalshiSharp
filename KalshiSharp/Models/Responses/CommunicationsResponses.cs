@@ -11,6 +11,90 @@ public sealed record CommunicationsIdResponse
     public required string CommunicationsId { get; init; }
 }
 
+/// <summary>Response for listing block-trade proposals.</summary>
+public sealed record BlockTradeProposalsResponse : PagedResponse<BlockTradeProposalResponse>
+{
+    /// <summary>Block-trade proposals in the current page.</summary>
+    public IReadOnlyList<BlockTradeProposalResponse> BlockTradeProposals { get; init; } = [];
+
+    /// <inheritdoc />
+    public override IReadOnlyList<BlockTradeProposalResponse> Items => BlockTradeProposals;
+}
+
+/// <summary>One block-trade proposal.</summary>
+public sealed record BlockTradeProposalResponse
+{
+    /// <summary>Block-trade proposal ID.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>User ID of the proposer.</summary>
+    public required string ProposerUserId { get; init; }
+
+    /// <summary>User ID of the buyer.</summary>
+    public required string BuyerUserId { get; init; }
+
+    /// <summary>User ID of the seller.</summary>
+    public required string SellerUserId { get; init; }
+
+    /// <summary>Market ticker for the proposal.</summary>
+    public required string MarketTicker { get; init; }
+
+    /// <summary>Price in centi-cents.</summary>
+    public required long PriceCentiCents { get; init; }
+
+    /// <summary>Number of contracts in centicounts.</summary>
+    public required long Centicount { get; init; }
+
+    /// <summary>Maker side of the proposed block trade.</summary>
+    public required string MakerSide { get; init; }
+
+    /// <summary>Proposal expiration time.</summary>
+    public required DateTimeOffset ExpirationTs { get; init; }
+
+    /// <summary>Current proposal status.</summary>
+    public required string Status { get; init; }
+
+    /// <summary>Proposal creation time.</summary>
+    public required DateTimeOffset CreatedTs { get; init; }
+
+    /// <summary>Proposal update time.</summary>
+    public required DateTimeOffset UpdatedTs { get; init; }
+
+    /// <summary>Whether the buyer accepted the proposal.</summary>
+    public bool? BuyerAccepted { get; init; }
+
+    /// <summary>Whether the seller accepted the proposal.</summary>
+    public bool? SellerAccepted { get; init; }
+
+    /// <summary>Buyer subtrader ID, when present.</summary>
+    public string? BuyerSubtraderId { get; init; }
+
+    /// <summary>Seller subtrader ID, when present.</summary>
+    public string? SellerSubtraderId { get; init; }
+
+    /// <summary>Time the buyer accepted the proposal.</summary>
+    public DateTimeOffset? BuyerAcceptedTs { get; init; }
+
+    /// <summary>Time the seller accepted the proposal.</summary>
+    public DateTimeOffset? SellerAcceptedTs { get; init; }
+
+    /// <summary>Time the proposal executed.</summary>
+    public DateTimeOffset? ExecutedTs { get; init; }
+
+    /// <summary>Buyer order ID created by execution.</summary>
+    public string? BuyerOrderId { get; init; }
+
+    /// <summary>Seller order ID created by execution.</summary>
+    public string? SellerOrderId { get; init; }
+}
+
+/// <summary>Response for proposing a block trade.</summary>
+public sealed record ProposeBlockTradeResponse
+{
+    /// <summary>ID of the newly created block-trade proposal.</summary>
+    public required string BlockTradeProposalId { get; init; }
+}
+
 /// <summary>Response for creating an RFQ.</summary>
 public sealed record CreateRfqResponse
 {

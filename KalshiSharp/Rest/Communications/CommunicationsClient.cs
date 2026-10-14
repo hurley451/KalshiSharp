@@ -18,6 +18,47 @@ internal sealed class CommunicationsClient(IKalshiHttpClient httpClient) : IComm
         }, cancellationToken);
 
     /// <inheritdoc />
+    public Task<BlockTradeProposalsResponse> ListBlockTradeProposalsAsync(
+        BlockTradeProposalQuery? query = null,
+        CancellationToken cancellationToken = default) =>
+        _httpClient.SendAsync<BlockTradeProposalsResponse>(new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/block-trade-proposals{query?.ToQueryString()}"
+        }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ProposeBlockTradeResponse> ProposeBlockTradeAsync(
+        ProposeBlockTradeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateProposeBlockTradeRequest(request);
+
+        return _httpClient.SendAsync<ProposeBlockTradeResponse>(new KalshiRequest
+        {
+            Method = HttpMethod.Post,
+            Path = $"{BasePath}/block-trade-proposals",
+            Content = request
+        }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task AcceptBlockTradeProposalAsync(
+        string blockTradeProposalId,
+        AcceptBlockTradeProposalRequest? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateAcceptBlockTradeProposalRequest(request);
+
+        return _httpClient.SendAsync(new KalshiRequest
+        {
+            Method = HttpMethod.Post,
+            Path = $"{BasePath}/block-trade-proposals/{EscapeId(blockTradeProposalId, nameof(blockTradeProposalId))}/accept",
+            Content = request
+        }, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<RfqsResponse> ListRfqsAsync(RfqQuery? query = null, CancellationToken cancellationToken = default) =>
         _httpClient.SendAsync<RfqsResponse>(new KalshiRequest
         {
@@ -143,8 +184,58 @@ internal sealed class CommunicationsClient(IKalshiHttpClient httpClient) : IComm
         }
     }
 
+    private static void ValidateProposeBlockTradeRequest(ProposeBlockTradeRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ThrowIfNullOrWhiteSpace(request.BuyerUserId, nameof(request.BuyerUserId));
+        ThrowIfNullOrWhiteSpace(request.SellerUserId, nameof(request.SellerUserId));
+        ThrowIfNullOrWhiteSpace(request.MarketTicker, nameof(request.MarketTicker));
+        ValidatePositive(request.PriceCentiCents, nameof(request.PriceCentiCents));
+        ValidatePositive(request.Centicount, nameof(request.Centicount));
+        ValidateYesNo(request.MakerSide, nameof(request.MakerSide));
+        ValidateSubtraderOrSubaccount(request.BuyerSubtraderId, request.BuyerSubaccount, "buyer");
+        ValidateSubtraderOrSubaccount(request.SellerSubtraderId, request.SellerSubaccount, "seller");
+    }
+
+    private static void ValidateAcceptBlockTradeProposalRequest(AcceptBlockTradeProposalRequest? request)
+    {
+        if (request is null)
+        {
+            return;
+        }
+
+        ValidateSubtraderOrSubaccount(request.SubtraderId, request.Subaccount, "acceptance");
+    }
+
     private static string QuotePath(string rfqId, string quoteId) =>
         $"{BasePath}/rfqs/{EscapeId(rfqId, nameof(rfqId))}/quotes/{EscapeId(quoteId, nameof(quoteId))}";
+
+    private static void ValidatePositive(long value, string parameterName)
+    {
+        if (value < 1)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, value, "Value must be greater than or equal to 1.");
+        }
+    }
+
+    private static void ValidateYesNo(string? value, string parameterName)
+    {
+        if (!string.Equals(value, "yes", StringComparison.Ordinal) &&
+            !string.Equals(value, "no", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Value must be yes or no.", parameterName);
+        }
+    }
+
+    private static void ValidateSubtraderOrSubaccount(string? subtraderId, int? subaccount, string name)
+    {
+        if (!string.IsNullOrWhiteSpace(subtraderId) && subaccount is not null)
+        {
+            throw new ArgumentException($"Provide either {name} subtrader ID or {name} subaccount, not both.", name);
+        }
+
+        SettlementQuery.ValidateSubaccount(subaccount);
+    }
 
     private static string EscapeId(string id, string parameterName)
     {

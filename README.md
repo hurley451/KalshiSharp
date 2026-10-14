@@ -562,6 +562,22 @@ await communications.AcceptQuoteAsync(
     scopedQuote.Quote.Id,
     new AcceptQuoteRequest { AcceptedSide = "yes" });
 await communications.ConfirmQuoteAsync(createdRfq.Id, scopedQuote.Quote.Id);
+
+var blockTrade = await communications.ProposeBlockTradeAsync(new ProposeBlockTradeRequest
+{
+    BuyerUserId = "buyer-user-id",
+    SellerUserId = "seller-user-id",
+    MarketTicker = "MARKET-ABC",
+    PriceCentiCents = 5600,
+    Centicount = 10000,
+    MakerSide = "yes",
+    ExpirationTs = DateTimeOffset.UtcNow.AddMinutes(5),
+    BuyerSubaccount = 0
+});
+
+await communications.AcceptBlockTradeProposalAsync(
+    blockTrade.BlockTradeProposalId,
+    new AcceptBlockTradeProposalRequest { Subaccount = 0 });
 ```
 
 ### WebSocket Real-Time Updates

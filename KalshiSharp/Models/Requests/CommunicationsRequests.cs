@@ -1,4 +1,6 @@
+using System.Text.Json.Serialization;
 using KalshiSharp.Models.Common;
+using KalshiSharp.Serialization.Converters;
 
 namespace KalshiSharp.Models.Requests;
 
@@ -154,6 +156,79 @@ public sealed record QuoteQuery : PaginationParameters
         builder.AppendIfNotEmpty("rfq_id", RfqId);
         return builder.Build();
     }
+}
+
+/// <summary>Query parameters for listing block-trade proposals.</summary>
+public sealed record BlockTradeProposalQuery : PaginationParameters
+{
+    /// <summary>Filter by market ticker.</summary>
+    public string? MarketTicker { get; init; }
+
+    /// <summary>Filter block-trade proposals by status.</summary>
+    public string? Status { get; init; }
+
+    /// <summary>Builds the encoded query string.</summary>
+    public string ToQueryString()
+    {
+        if (Limit is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(Limit), Limit, "Limit must be between 1 and 100.");
+        }
+
+        var builder = new QueryStringBuilder();
+        AppendPaginationParameters(builder);
+        builder.AppendIfNotEmpty("market_ticker", MarketTicker);
+        builder.AppendIfNotEmpty("status", Status);
+        return builder.Build();
+    }
+}
+
+/// <summary>Request for proposing a block trade.</summary>
+public sealed record ProposeBlockTradeRequest
+{
+    /// <summary>User ID of the buyer.</summary>
+    public required string BuyerUserId { get; init; }
+
+    /// <summary>User ID of the seller.</summary>
+    public required string SellerUserId { get; init; }
+
+    /// <summary>The ticker of the market for this block trade.</summary>
+    public required string MarketTicker { get; init; }
+
+    /// <summary>Price in centi-cents.</summary>
+    public required long PriceCentiCents { get; init; }
+
+    /// <summary>Number of contracts in centicounts.</summary>
+    public required long Centicount { get; init; }
+
+    /// <summary>The maker side of the trade. Valid values are <c>yes</c> and <c>no</c>.</summary>
+    public required string MakerSide { get; init; }
+
+    /// <summary>Expiration time of the proposal.</summary>
+    [JsonConverter(typeof(IsoDateTimeOffsetConverter))]
+    public required DateTimeOffset ExpirationTs { get; init; }
+
+    /// <summary>Subtrader ID of the buyer. Provide either this or <see cref="BuyerSubaccount"/>, not both.</summary>
+    public string? BuyerSubtraderId { get; init; }
+
+    /// <summary>User-managed subaccount number of the buyer, including zero for primary.</summary>
+    public int? BuyerSubaccount { get; init; }
+
+    /// <summary>Subtrader ID of the seller. Provide either this or <see cref="SellerSubaccount"/>, not both.</summary>
+    public string? SellerSubtraderId { get; init; }
+
+    /// <summary>User-managed subaccount number of the seller, including zero for primary.</summary>
+    public int? SellerSubaccount { get; init; }
+}
+
+/// <summary>Request for accepting a block-trade proposal.</summary>
+public sealed record AcceptBlockTradeProposalRequest
+{
+    /// <summary>Subtrader ID to accept as. Provide either this or <see cref="Subaccount"/>, not both.</summary>
+    public string? SubtraderId { get; init; }
+
+    /// <summary>User-managed subaccount number to accept as, including zero for primary.</summary>
+    public int? Subaccount { get; init; }
 }
 
 /// <summary>Request for creating a quote in response to an RFQ.</summary>

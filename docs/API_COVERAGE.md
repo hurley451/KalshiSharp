@@ -22,7 +22,7 @@ where optional clients are introduced.
 | Incentive programs | Liquidity, margin maker-volume, and margin taker-volume program shapes |
 | Live data | Generic, legacy, batch, event, game-stat, weather index, and weather calibration endpoints |
 | API keys | List, create, generate, and delete API keys |
-| Communications | Communications identity, RFQ list/create/read/delete, quote list/create/read/delete/accept/confirm |
+| Communications | Communications identity, block-trade proposals, RFQ list/create/read/delete, quote list/create/read/delete/accept/confirm |
 
 ## WebSocket Coverage
 
@@ -35,7 +35,7 @@ where optional clients are introduced.
 ## Notable Tracked Gaps
 
 - CF Benchmarks remains blocked on a stale PR with unresolved replay and correlation findings.
-- Communications WebSocket notifications and block-trade communications surfaces are tracked but not complete.
+- Communications WebSocket notifications are tracked but not complete.
 - Ed25519 key support is security-sensitive and needs explicit signing design before implementation.
 
 Use GitHub issues for the current authoritative backlog.
