@@ -162,6 +162,37 @@ public sealed class EventClientTests : IDisposable
     }
 
     [Fact]
+    public async Task GetEventMetadataAsync_RequestsMetadataWithoutMarkets()
+    {
+        // Arrange
+        const string eventTicker = "AAPL-EVENT";
+        _server.Given(Request.Create()
+                .WithPath($"/trade-api/v2/events/{eventTicker}")
+                .WithParam("exclude_markets", "true")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "event": {
+                        "event_ticker": "AAPL-EVENT",
+                        "title": "Apple Stock Events",
+                        "category": "tech",
+                        "collateral_return_type": "binary"
+                    }
+                }
+                """));
+
+        // Act
+        var result = await _client.GetEventMetadataAsync(eventTicker);
+
+        // Assert
+        result.EventTicker.Should().Be(eventTicker);
+        result.Markets.Should().BeNull();
+    }
+
+    [Fact]
     public async Task GetEventAsync_WithNotFound_ThrowsNotFoundException()
     {
         // Arrange
