@@ -26,12 +26,40 @@ internal sealed class EventClient : IEventClient
     /// <inheritdoc />
     public async Task<EventResponse> GetEventAsync(string eventTicker, bool? withNestedMarkets = null, CancellationToken cancellationToken = default)
     {
+        return await SendGetEventAsync(
+            eventTicker,
+            withNestedMarkets,
+            excludeMarkets: false,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<EventResponse> GetEventMetadataAsync(string eventTicker, CancellationToken cancellationToken = default)
+    {
+        return await SendGetEventAsync(
+            eventTicker,
+            withNestedMarkets: null,
+            excludeMarkets: true,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<EventResponse> SendGetEventAsync(
+        string eventTicker,
+        bool? withNestedMarkets,
+        bool excludeMarkets,
+        CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventTicker);
 
         var builder = new QueryStringBuilder();
         if (withNestedMarkets.HasValue)
         {
             builder.Append("with_nested_markets", withNestedMarkets.Value ? "true" : "false");
+        }
+
+        if (excludeMarkets)
+        {
+            builder.Append("exclude_markets", "true");
         }
 
         var request = new KalshiRequest

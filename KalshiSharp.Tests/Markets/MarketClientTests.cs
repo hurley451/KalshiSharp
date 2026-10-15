@@ -259,6 +259,39 @@ public sealed class MarketClientTests : IDisposable
     }
 
     [Fact]
+    public async Task ListMarketsAsync_ForEventPage_AppliesEventTickerLimitAndCursor()
+    {
+        // Arrange
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/markets")
+                .WithParam("event_ticker", "EVENT-123")
+                .WithParam("limit", "50")
+                .WithParam("cursor", "next-page")
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "markets": [],
+                    "cursor": null
+                }
+                """));
+
+        // Act
+        var result = await _client.ListMarketsAsync(new MarketQuery
+        {
+            EventTicker = "EVENT-123",
+            Limit = 50,
+            Cursor = "next-page"
+        });
+
+        // Assert
+        result.Items.Should().BeEmpty();
+        result.HasMore.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task GetOrderBookAsync_ReturnsOrderBook()
     {
         // Arrange

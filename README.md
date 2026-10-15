@@ -171,6 +171,20 @@ foreach (var level in orderBook.OrderbookFp.YesDollars)
 }
 ```
 
+### Read Event Metadata and Page Its Markets
+
+Use a metadata-only event read when the event can contain many markets, then page those markets through the existing market query.
+
+```csharp
+var eventMetadata = await client.Events.GetEventMetadataAsync("EVENT-TICKER");
+
+var marketPage = await client.Markets.ListMarketsAsync(new MarketQuery
+{
+    EventTicker = eventMetadata.EventTicker,
+    Limit = 100
+});
+```
+
 ### Discover Series
 
 Series access is an optional client capability for discovering recurring contracts.
