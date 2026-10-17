@@ -143,4 +143,19 @@ internal sealed record SubscriptionParams
     [JsonPropertyName("action")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SubscriptionUpdateAction? Action { get; init; }
+
+    /// <summary>Restricts communications RFQ events to RFQs created by the authenticated user.</summary>
+    [JsonPropertyName("user_filter")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UserFilter { get; init; }
+
+    /// <summary>Optional communications fanout shard count.</summary>
+    [JsonPropertyName("shard_factor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ShardFactor { get; init; }
+
+    /// <summary>Optional communications fanout shard key.</summary>
+    [JsonPropertyName("shard_key")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ShardKey { get; init; }
 }

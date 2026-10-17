@@ -617,6 +617,12 @@ await wsClient.SubscribeAsync(OrderBookSubscription.ForMarkets("TICKER-ABC") wit
     UseYesPrice = true
 });
 await wsClient.SubscribeAsync(TradeSubscription.ForMarkets("TICKER-ABC"));
+await wsClient.SubscribeAsync(new CommunicationsSubscription
+{
+    SelfOnly = true,
+    ShardFactor = 10,
+    ShardKey = 3
+});
 
 // Process messages
 await foreach (var message in wsClient.Messages)
@@ -631,6 +637,9 @@ await foreach (var message in wsClient.Messages)
             break;
         case TradeUpdate trade:
             Console.WriteLine($"Trade: {trade.Message.CountFp} @ ${trade.Message.YesPriceDollars}");
+            break;
+        case QuoteExecutedUpdate quote:
+            Console.WriteLine($"Quote {quote.Message.QuoteId} executed as order {quote.Message.OrderId}");
             break;
     }
 }
