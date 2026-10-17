@@ -39,6 +39,11 @@ public sealed class WebSocketMessageConverter : JsonConverter<WebSocketMessage>
             "event_lifecycle" => typeof(EventLifecycleUpdate),
             "event_fee_update" => typeof(EventFeeUpdate),
             "order_group_update" => typeof(OrderGroupUpdate),
+            "rfq_created" => typeof(RfqCreatedUpdate),
+            "rfq_deleted" => typeof(RfqDeletedUpdate),
+            "quote_created" => typeof(QuoteCreatedUpdate),
+            "quote_accepted" => typeof(QuoteAcceptedUpdate),
+            "quote_executed" => typeof(QuoteExecutedUpdate),
             _ => null
         };
 
