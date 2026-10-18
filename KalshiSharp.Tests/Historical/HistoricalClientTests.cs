@@ -54,6 +54,18 @@ public sealed class HistoricalClientTests : IDisposable
         (_signer as IDisposable)?.Dispose();
     }
 
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"cursor\":\"next\"}")]
+    [InlineData("{\"trades\":null}")]
+    public async Task ListTradesAsync_RejectsMalformedCollection(string body)
+    {
+        _server.Given(Request.Create().WithPath("/trade-api/v2/historical/trades").UsingGet())
+            .RespondWith(JsonResponse(body));
+        var error = await Assert.ThrowsAsync<KalshiSharp.Errors.KalshiException>(() => _client.ListTradesAsync());
+        Assert.IsType<System.Text.Json.JsonException>(error.InnerException);
+    }
+
     [Fact]
     public async Task GetCutoffAsync_ReturnsPositionCutoff()
     {
