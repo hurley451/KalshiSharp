@@ -233,7 +233,10 @@ These are public, bodyless SDK GETs: `/series/fee_changes` (not paginated) and
 `/events/fee_changes` (limit 1..1000, default 100). Null `ShowHistorical` omits the
 filter; explicit false is sent. Scheduled changes retain IDs, tickers, timestamps,
 wire fee-type strings (including future values), and decimal multipliers without
-binary floating-point conversion. Event override fields are required but nullable:
+binary floating-point conversion. Multiplier numbers must be mathematically
+representable by `decimal`: excess precision, underflow and overflow fail
+deserialization rather than rounding; exact exponent and zero forms are accepted.
+Event override fields are required but nullable:
 null clears that override to the parent series value; zero is not null. Missing
 required fields or null collections fail deserialization rather than implying no
 changes. Empty event pages retain their cursor; cursor emptiness, not row count,

@@ -141,6 +141,58 @@ public sealed class FeeMetadataContractTests
         await Assert.ThrowsAsync<KalshiException>(() => f.Client.Events.GetEventFeeChangesAsync());
     }
 
+    public static IEnumerable<object[]> InexactMultipliers()
+    {
+        foreach (var events in new[] { false, true })
+        foreach (var value in new[] { "1e-29", "-1e-29", "1.00000000000000000000000000001",
+            "0.12345678901234567890123456789", "79228162514264337593543950336", "1e100000", "1e-100000" })
+            yield return [events, value];
+    }
+
+    [Theory]
+    [MemberData(nameof(InexactMultipliers))]
+    public async Task InexactMultipliersFailRatherThanRoundOrUnderflow(bool events, string value)
+    {
+        using var f = new Fixture(MultiplierBody(events, value));
+        var error = await Assert.ThrowsAsync<KalshiException>(() => Read(f, events));
+        Assert.Equal(HttpStatusCode.OK, error.StatusCode);
+        Assert.IsType<JsonException>(error.InnerException);
+        Assert.Equal(1, f.Transport.Calls);
+    }
+
+    public static IEnumerable<object[]> ExactMultipliers()
+    {
+        foreach (var events in new[] { false, true })
+        foreach (var pair in new (string Wire, decimal Expected)[] {
+            ("0", 0m), ("-0.000e-100000", 0m), ("0e100000", 0m), ("0e999999999999999999999999999", 0m),
+            ("1e-28", 0.0000000000000000000000000001m), ("10e-29", 0.0000000000000000000000000001m),
+            ("1.00000000000000000000000000000", 1m), ("1.25E+2", 125m), ("-125e-2", -1.25m),
+            ("79228162514264337593543950335", decimal.MaxValue),
+            ("792281625142643375935439503350e-1", decimal.MaxValue),
+            ("7.9228162514264337593543950335e28", decimal.MaxValue),
+            ("1.234567890123456789", 1.234567890123456789m) })
+            yield return [events, pair.Wire, pair.Expected];
+    }
+
+    [Theory]
+    [MemberData(nameof(ExactMultipliers))]
+    public async Task ExactExponentZeroAndBoundaryMultipliersRemainSupported(bool events, string wire, decimal expected)
+    {
+        using var f = new Fixture(MultiplierBody(events, wire));
+        var actual = events
+            ? Assert.Single((await f.Client.Events.GetEventFeeChangesAsync()).EventFeeChanges).FeeMultiplierOverride
+            : Assert.Single((await f.Client.Exchange.GetSeriesFeeChangesAsync()).SeriesFeeChanges).FeeMultiplier;
+        Assert.Equal(expected, actual);
+    }
+
+    private static string MultiplierBody(bool events, string value)
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(events ? EventItem : SeriesItem)!.AsObject();
+        node[events ? "fee_multiplier_override" : "fee_multiplier"] = System.Text.Json.Nodes.JsonNode.Parse(value);
+        return events ? "{\"event_fee_changes\":[" + node.ToJsonString() + "],\"cursor\":\"\"}" :
+            "{\"series_fee_change_arr\":[" + node.ToJsonString() + "]}";
+    }
+
     [Theory]
     [InlineData("id")]
     [InlineData("series_ticker")]
