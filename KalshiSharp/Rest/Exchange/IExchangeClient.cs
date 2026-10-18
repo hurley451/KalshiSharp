@@ -1,4 +1,5 @@
 using KalshiSharp.Models.Responses;
+using KalshiSharp.Models.Requests;
 
 namespace KalshiSharp.Rest.Exchange;
 
@@ -7,6 +8,10 @@ namespace KalshiSharp.Rest.Exchange;
 /// </summary>
 public interface IExchangeClient
 {
+    /// <summary>Gets public series fee changes, optionally including history. No pagination is defined.</summary>
+    Task<SeriesFeeChangesResponse> GetSeriesFeeChangesAsync(SeriesFeeChangesQuery? query = null, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This exchange client does not support series fee changes.");
+
     /// <summary>
     /// Gets the current status of the Kalshi exchange.
     /// </summary>

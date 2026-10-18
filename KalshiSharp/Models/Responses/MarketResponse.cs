@@ -218,6 +218,10 @@ public sealed record MarketResponse
     /// <summary>Occurrence time for the underlying event.</summary>
     public DateTimeOffset? OccurrenceDatetime { get; init; }
 
+    /// <summary>Expiration of this market's fee waiver when supplied; null/omitted does not establish fee policy.</summary>
+    [System.Text.Json.Serialization.JsonConverter(typeof(KalshiSharp.Serialization.Converters.FeeTimestampConverter))]
+    public DateTimeOffset? FeeWaiverExpirationTime { get; init; }
+
     /// <summary>
     /// Settlement timer in seconds.
     /// </summary>
