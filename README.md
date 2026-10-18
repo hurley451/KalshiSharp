@@ -211,6 +211,46 @@ foreach (var item in series.Items)
 }
 ```
 
+### Read Fee Changes and Market Waiver Metadata
+
+```csharp
+var seriesChanges = await client.Exchange.GetSeriesFeeChangesAsync(new SeriesFeeChangesQuery
+{
+    SeriesTicker = "KXEXAMPLE",
+    ShowHistorical = true
+});
+var eventPage = await client.Events.GetEventFeeChangesAsync(new EventFeeChangesQuery
+{
+    EventTicker = "KXEXAMPLE-EVENT",
+    Limit = 100
+});
+// Pass eventPage.Cursor unchanged on the next request; stop when it is empty.
+var market = await client.Markets.GetMarketAsync("KXEXAMPLE-EVENT-MARKET");
+DateTimeOffset? waiverExpires = market.FeeWaiverExpirationTime;
+```
+
+These are public, bodyless SDK GETs: `/series/fee_changes` (not paginated) and
+`/events/fee_changes` (limit 1..1000, default 100). Null `ShowHistorical` omits the
+filter; explicit false is sent. Scheduled changes retain IDs, tickers, timestamps,
+wire fee-type strings (including future values), and decimal multipliers without
+binary floating-point conversion. Event override fields are required but nullable:
+null clears that override to the parent series value; zero is not null. Missing
+required fields or null collections fail deserialization rather than implying no
+changes. Empty event pages retain their cursor; cursor emptiness, not row count,
+determines completion. Alternate client implementations default these new methods
+to `NotSupportedException`.
+
+`MarketResponse.FeeWaiverExpirationTime` retains the supplied offset with
+`DateTimeOffset` tick precision; omitted or null remains null. It is metadata, not proof of fee-free
+execution. This SDK slice does not choose an effective fee schedule, calculate
+maker/taker or account-specific fees, or implement per-order rounding accumulators.
+Read failures use the existing SDK exceptions; these methods add no retries.
+
+Contract sources: [series fee changes](https://docs.kalshi.com/api-reference/exchange/get-series-fee-changes),
+[event fee changes](https://docs.kalshi.com/api-reference/events/get-event-fee-changes),
+[market waiver metadata](https://docs.kalshi.com/api-reference/market/get-market), and
+[fee rounding](https://docs.kalshi.com/getting_started/fee_rounding).
+
 ### Discover Structured Targets and Milestones
 
 Structured targets identify participants, teams, or other subjects, while milestones connect

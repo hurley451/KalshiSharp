@@ -24,6 +24,14 @@ internal sealed class EventClient : IEventClient
     }
 
     /// <inheritdoc />
+    public Task<EventFeeChangesResponse> GetEventFeeChangesAsync(EventFeeChangesQuery? query = null, CancellationToken cancellationToken = default) =>
+        _httpClient.SendAsync<EventFeeChangesResponse>(new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/fee_changes{query?.ToQueryString()}"
+        }, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<EventResponse> GetEventAsync(string eventTicker, bool? withNestedMarkets = null, CancellationToken cancellationToken = default)
     {
         return await SendGetEventAsync(
