@@ -4,10 +4,11 @@ using KalshiSharp.Configuration;
 
 namespace KalshiSharp.RateLimiting;
 
-/// <summary>Separate read, unscoped-write, and shard-local write token buckets.</summary>
+/// <summary>Separate read, balance-read, unscoped-write, and shard-local write token buckets.</summary>
 public sealed class KalshiTokenRateLimiter : IRateLimiter
 {
     private readonly Bucket _read;
+    private readonly Bucket _balanceRead;
     private readonly Bucket _unscopedWrite;
     private readonly ConcurrentDictionary<int, Bucket> _shardWrites = new();
     private readonly KalshiRateLimitOptions _options;
@@ -19,11 +20,12 @@ public sealed class KalshiTokenRateLimiter : IRateLimiter
         _options = options ?? throw new ArgumentNullException(nameof(options));
         Validate(options);
         _read = CreateBucket(options.ReadTokensPerSecond, options.ReadTokenLimit, options.QueueLimit);
+        _balanceRead = CreateBucket(options.BalanceTokensPerSecond, options.BalanceTokenLimit, options.QueueLimit);
         _unscopedWrite = CreateBucket(options.WriteTokensPerSecond, options.WriteTokenLimit, options.QueueLimit);
     }
 
     /// <inheritdoc />
-    public bool IsThrottling => _read.IsThrottling || _unscopedWrite.IsThrottling || _shardWrites.Values.Any(x => x.IsThrottling);
+    public bool IsThrottling => _read.IsThrottling || _balanceRead.IsThrottling || _unscopedWrite.IsThrottling || _shardWrites.Values.Any(x => x.IsThrottling);
 
     /// <inheritdoc />
     public ValueTask WaitAsync(CancellationToken cancellationToken = default) =>
@@ -36,12 +38,14 @@ public sealed class KalshiTokenRateLimiter : IRateLimiter
         ArgumentNullException.ThrowIfNull(request);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(request.TokenCost);
 
-        var bucket = request.IsWrite
-            ? request is { IsBatch: false, ExchangeIndex: > 0 }
-                ? _shardWrites.GetOrAdd(request.ExchangeIndex.Value, _ =>
-                    CreateBucket(_options.WriteTokensPerSecond, _options.WriteTokenLimit, _options.QueueLimit))
-                : _unscopedWrite
-            : _read;
+        var bucket = request switch
+        {
+            { IsWrite: true, IsBatch: false, ExchangeIndex: > 0 } => _shardWrites.GetOrAdd(request.ExchangeIndex.Value, _ =>
+                CreateBucket(_options.WriteTokensPerSecond, _options.WriteTokenLimit, _options.QueueLimit)),
+            { IsWrite: true } => _unscopedWrite,
+            { IsBalanceRead: true } => _balanceRead,
+            _ => _read
+        };
 
         await bucket.AcquireAsync(request.TokenCost, cancellationToken).ConfigureAwait(false);
     }
@@ -51,6 +55,7 @@ public sealed class KalshiTokenRateLimiter : IRateLimiter
     {
         if (_disposed) return;
         _read.Dispose();
+        _balanceRead.Dispose();
         _unscopedWrite.Dispose();
         foreach (var bucket in _shardWrites.Values) bucket.Dispose();
         _disposed = true;
@@ -67,6 +72,8 @@ public sealed class KalshiTokenRateLimiter : IRateLimiter
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.ReadTokensPerSecond);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.ReadTokenLimit);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.BalanceTokensPerSecond);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.BalanceTokenLimit);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.WriteTokensPerSecond);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.WriteTokenLimit);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.QueueLimit);
