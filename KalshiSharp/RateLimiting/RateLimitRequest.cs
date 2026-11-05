@@ -6,6 +6,9 @@ public sealed record RateLimitRequest
     /// <summary>Whether the request consumes the write budget.</summary>
     public required bool IsWrite { get; init; }
 
+    /// <summary>Whether the request consumes Kalshi's dedicated portfolio-balance budget.</summary>
+    public bool IsBalanceRead { get; init; }
+
     /// <summary>Number of server rate-limit tokens consumed.</summary>
     public required int TokenCost { get; init; }
 
