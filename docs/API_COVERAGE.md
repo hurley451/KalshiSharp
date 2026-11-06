@@ -29,13 +29,12 @@ where optional clients are introduced.
 | Channel family | SDK coverage |
 |----------------|--------------|
 | Public market streams | Order book, ticker, trades, lifecycle, and multivariate lifecycle messages |
-| Private account streams | Fills, positions, user orders, and order groups |
+| Private account streams | Fills, positions, user orders, order groups, and communications RFQ/quote notifications |
 | Connection behavior | Typed message dispatch, reconnect policy, replay support, cancellation, and unknown-message preservation |
 
 ## Notable Tracked Gaps
 
 - CF Benchmarks remains blocked on a stale PR with unresolved replay and correlation findings.
-- Communications WebSocket notifications are tracked but not complete.
 - Ed25519 key support is security-sensitive and needs explicit signing design before implementation.
 
 Use GitHub issues for the current authoritative backlog.

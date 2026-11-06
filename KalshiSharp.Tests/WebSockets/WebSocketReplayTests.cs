@@ -273,6 +273,76 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         command.Should().NotContain("market_tickers");
     }
 
+    [Fact]
+    public async Task SubscribeAsync_CommunicationsUsesDocumentedFiltersWithoutMarketTickers()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        await _client.SubscribeAsync(new CommunicationsSubscription
+        {
+            SelfOnly = true,
+            ShardFactor = 10,
+            ShardKey = 3
+        });
+
+        var command = _mockConnection.SentMessages[^1];
+        command.Should().Contain("\"channels\":[\"communications\"]");
+        command.Should().Contain("\"user_filter\":\"self\"");
+        command.Should().Contain("\"shard_factor\":10");
+        command.Should().Contain("\"shard_key\":3");
+        command.Should().NotContain("market_tickers");
+    }
+
+    [Fact]
+    public async Task SubscribeAsync_CommunicationsRejectsIncompleteSharding()
+    {
+        _mockConnection.SetupConnect();
+        await _client.ConnectAsync();
+
+        var operation = () => _client.SubscribeAsync(new CommunicationsSubscription { ShardFactor = 2 });
+
+        await operation.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("rfq_created", typeof(RfqCreatedUpdate))]
+    [InlineData("rfq_deleted", typeof(RfqDeletedUpdate))]
+    [InlineData("quote_created", typeof(QuoteCreatedUpdate))]
+    [InlineData("quote_accepted", typeof(QuoteAcceptedUpdate))]
+    [InlineData("quote_executed", typeof(QuoteExecutedUpdate))]
+    public void CommunicationsMessages_DeserializeDocumentedEnvelopes(string type, Type expectedType)
+    {
+        var message = type.StartsWith("rfq_", StringComparison.Ordinal)
+            ? "{\"id\":\"rfq-1\",\"creator_id\":\"creator\",\"market_ticker\":\"MARKET\"}"
+            : type == "quote_executed"
+                ? "{\"quote_id\":\"quote-1\",\"rfq_id\":\"rfq-1\",\"quote_creator_id\":\"quote-creator\",\"rfq_creator_id\":\"rfq-creator\",\"market_ticker\":\"MARKET\",\"client_order_id\":\"client-1\"}"
+                : "{\"quote_id\":\"quote-1\",\"rfq_id\":\"rfq-1\",\"quote_creator_id\":\"quote-creator\",\"rfq_creator_id\":\"rfq-creator\",\"market_ticker\":\"MARKET\"}";
+        var json = $"{{\"type\":\"{type}\",\"sid\":15,\"sending_ts_ms\":1669149841234,\"msg\":{message}}}";
+
+        var result = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default);
+
+        result.Should().BeOfType(expectedType);
+        result!.SendingTimestampUtc.Should().Be(DateTimeOffset.FromUnixTimeMilliseconds(1669149841234));
+    }
+
+    [Fact]
+    public void QuoteAcceptedMessage_DeserializesDocumentedPayloadFields()
+    {
+        const string json = """
+        {"type":"quote_accepted","msg":{"quote_id":"quote-1","rfq_id":"rfq-1","quote_creator_id":"quote-creator","rfq_creator_id":"rfq-creator","market_ticker":"MARKET","yes_bid_dollars":"0.3500","no_bid_dollars":"0.6500","accepted_side":"yes","contracts_accepted_fp":"50.00","yes_contracts_offered_fp":"100.00","no_contracts_offered_fp":"200.00","rfq_target_cost_dollars":"0.3500","subaccount":3}}
+        """;
+
+        var update = JsonSerializer.Deserialize<WebSocketMessage>(json, KalshiJsonOptions.Default)
+            .Should().BeOfType<QuoteAcceptedUpdate>().Subject;
+
+        update.Message.AcceptedSide.Should().Be(OrderSide.Yes);
+        update.Message.ContractsAcceptedFp.Should().Be("50.00");
+        update.Message.YesContractsOfferedFp.Should().Be("100.00");
+        update.Message.RfqTargetCostDollars.Should().Be("0.3500");
+        update.Message.Subaccount.Should().Be(3);
+    }
+
     [Theory]
     [InlineData("market_lifecycle_v2", typeof(MarketLifecycleUpdate))]
     [InlineData("multivariate_market_lifecycle", typeof(MultivariateMarketLifecycleUpdate))]
@@ -1017,6 +1087,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         private readonly Queue<string> _messageQueue = new();
         private readonly List<string> _sentMessages = [];
         private readonly object _lock = new();
+        private readonly SemaphoreSlim _messageAvailable = new(0);
         private ConnectionState _state = ConnectionState.Disconnected;
         private bool _connected;
 
@@ -1050,6 +1121,8 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
                 _messageQueue.Enqueue(json);
             }
+
+            _messageAvailable.Release();
         }
 
         public Task ConnectAsync(Uri uri, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default)
@@ -1067,31 +1140,53 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             return Task.CompletedTask;
         }
 
-        public ValueTask<WebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public async ValueTask<WebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            lock (_lock)
+            while (true)
             {
-                if (_messageQueue.TryDequeue(out var message))
+                lock (_lock)
                 {
-                    var bytes = Encoding.UTF8.GetBytes(message);
-                    bytes.CopyTo(buffer);
-                    return ValueTask.FromResult(new WebSocketReceiveResult(
-                        bytes.Length,
-                        WebSocketMessageType.Text,
-                        endOfMessage: true));
+                    if (_messageQueue.TryDequeue(out var message))
+                    {
+                        var bytes = Encoding.UTF8.GetBytes(message);
+                        bytes.CopyTo(buffer);
+                        return new WebSocketReceiveResult(
+                            bytes.Length,
+                            WebSocketMessageType.Text,
+                            endOfMessage: true);
+                    }
                 }
-            }
 
-            // Simulate waiting for messages
-            return new ValueTask<WebSocketReceiveResult>(
-                Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken)
-                    .ContinueWith(_ => new WebSocketReceiveResult(
-                        0,
-                        WebSocketMessageType.Close,
-                        endOfMessage: true,
-                        WebSocketCloseStatus.NormalClosure,
-                        "No more messages"),
-                        cancellationToken));
+                var messageAvailableTask = _messageAvailable.WaitAsync(cancellationToken);
+                var timeoutTask = Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+                if (await Task.WhenAny(messageAvailableTask, timeoutTask) == messageAvailableTask)
+                {
+                    await messageAvailableTask;
+                    continue;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                lock (_lock)
+                {
+                    if (_messageQueue.TryDequeue(out var message))
+                    {
+                        var bytes = Encoding.UTF8.GetBytes(message);
+                        bytes.CopyTo(buffer);
+                        return new WebSocketReceiveResult(
+                            bytes.Length,
+                            WebSocketMessageType.Text,
+                            endOfMessage: true);
+                    }
+                }
+
+                return new WebSocketReceiveResult(
+                    0,
+                    WebSocketMessageType.Close,
+                    endOfMessage: true,
+                    WebSocketCloseStatus.NormalClosure,
+                    "No more messages");
+            }
         }
 
         public Task CloseAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken = default)
@@ -1120,6 +1215,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         public ValueTask DisposeAsync()
         {
             _connected = false;
+            _messageAvailable.Dispose();
             return ValueTask.CompletedTask;
         }
 
