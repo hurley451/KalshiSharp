@@ -504,6 +504,7 @@ public sealed class PortfolioClientTests : IDisposable
                         "total_traded_dollars": "5.6000",
                         "position_fp": "10.00",
                         "market_exposure_dollars": "2.5000",
+                        "netting_enabled": true,
                         "realized_pnl_dollars": "0.1000",
                         "fees_paid_dollars": "0.0200",
                         "last_updated_ts": "2026-08-19T12:00:00Z"
@@ -528,6 +529,7 @@ public sealed class PortfolioClientTests : IDisposable
 
         result.Items.Should().ContainSingle();
         result.Items[0].PositionFp.Should().Be("10.00");
+        result.Items[0].NettingEnabled.Should().BeTrue();
         result.EventPositions.Should().ContainSingle().Which.EventTicker.Should().Be("EVENT-1");
     }
 

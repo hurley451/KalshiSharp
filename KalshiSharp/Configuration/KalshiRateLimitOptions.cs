@@ -9,6 +9,12 @@ public sealed class KalshiRateLimitOptions
     /// <summary>Maximum read-token burst.</summary>
     public int ReadTokenLimit { get; set; } = 200;
 
+    /// <summary>Portfolio balance reads replenished per second. Kalshi's Basic and Advanced tiers allow one.</summary>
+    public int BalanceTokensPerSecond { get; set; } = 1;
+
+    /// <summary>Maximum portfolio-balance read burst. Kalshi allows no burst.</summary>
+    public int BalanceTokenLimit { get; set; } = 1;
+
     /// <summary>Write tokens replenished per second for each unscoped or shard bucket.</summary>
     public int WriteTokensPerSecond { get; set; } = 100;
 

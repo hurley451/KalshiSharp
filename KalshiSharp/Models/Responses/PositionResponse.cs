@@ -56,6 +56,9 @@ public sealed record PositionResponse
     /// <summary>Exchange shard that owns this market position.</summary>
     public int? ExchangeIndex { get; init; }
 
+    /// <summary>Whether event netting applies to this position.</summary>
+    public bool? NettingEnabled { get; init; }
+
     /// <summary>
     /// Average price paid for the position.
     /// </summary>
