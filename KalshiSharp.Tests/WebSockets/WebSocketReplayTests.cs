@@ -1087,6 +1087,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         private readonly Queue<string> _messageQueue = new();
         private readonly List<string> _sentMessages = [];
         private readonly object _lock = new();
+        private readonly SemaphoreSlim _messageAvailable = new(0);
         private ConnectionState _state = ConnectionState.Disconnected;
         private bool _connected;
 
@@ -1120,6 +1121,8 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             {
                 _messageQueue.Enqueue(json);
             }
+
+            _messageAvailable.Release();
         }
 
         public Task ConnectAsync(Uri uri, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default)
@@ -1137,31 +1140,53 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
             return Task.CompletedTask;
         }
 
-        public ValueTask<WebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public async ValueTask<WebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            lock (_lock)
+            while (true)
             {
-                if (_messageQueue.TryDequeue(out var message))
+                lock (_lock)
                 {
-                    var bytes = Encoding.UTF8.GetBytes(message);
-                    bytes.CopyTo(buffer);
-                    return ValueTask.FromResult(new WebSocketReceiveResult(
-                        bytes.Length,
-                        WebSocketMessageType.Text,
-                        endOfMessage: true));
+                    if (_messageQueue.TryDequeue(out var message))
+                    {
+                        var bytes = Encoding.UTF8.GetBytes(message);
+                        bytes.CopyTo(buffer);
+                        return new WebSocketReceiveResult(
+                            bytes.Length,
+                            WebSocketMessageType.Text,
+                            endOfMessage: true);
+                    }
                 }
-            }
 
-            // Simulate waiting for messages
-            return new ValueTask<WebSocketReceiveResult>(
-                Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken)
-                    .ContinueWith(_ => new WebSocketReceiveResult(
-                        0,
-                        WebSocketMessageType.Close,
-                        endOfMessage: true,
-                        WebSocketCloseStatus.NormalClosure,
-                        "No more messages"),
-                        cancellationToken));
+                var messageAvailableTask = _messageAvailable.WaitAsync(cancellationToken);
+                var timeoutTask = Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+                if (await Task.WhenAny(messageAvailableTask, timeoutTask) == messageAvailableTask)
+                {
+                    await messageAvailableTask;
+                    continue;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                lock (_lock)
+                {
+                    if (_messageQueue.TryDequeue(out var message))
+                    {
+                        var bytes = Encoding.UTF8.GetBytes(message);
+                        bytes.CopyTo(buffer);
+                        return new WebSocketReceiveResult(
+                            bytes.Length,
+                            WebSocketMessageType.Text,
+                            endOfMessage: true);
+                    }
+                }
+
+                return new WebSocketReceiveResult(
+                    0,
+                    WebSocketMessageType.Close,
+                    endOfMessage: true,
+                    WebSocketCloseStatus.NormalClosure,
+                    "No more messages");
+            }
         }
 
         public Task CloseAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken = default)
@@ -1190,6 +1215,7 @@ public sealed class WebSocketReplayTests : IAsyncDisposable
         public ValueTask DisposeAsync()
         {
             _connected = false;
+            _messageAvailable.Dispose();
             return ValueTask.CompletedTask;
         }
 
