@@ -1286,15 +1286,90 @@ public sealed class PortfolioClientTests : IDisposable
     }
 
     [Fact]
+    public async Task ListCreditHistoryAsync_PreservesFixedPointAmountsAndPagination()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/credit_history")
+                .WithParam("limit", "500")
+                .WithParam("cursor", "credit-page")
+                .WithParam("min_ts", "1755600000")
+                .WithParam("max_ts", "1755686400")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""
+                {
+                    "credits": [{
+                        "credit_id": "credit-1",
+                        "type": "trading_fee_rebate",
+                        "status": "applied",
+                        "amount_dollars": "0.000001",
+                        "reason": "Rebate for MARKET-1",
+                        "created_time": "2026-10-29T12:00:00Z"
+                    }],
+                    "cursor": "next-credit-page"
+                }
+                """));
+
+        var result = await _portfolioClient.ListCreditHistoryAsync(new CreditHistoryQuery
+        {
+            Limit = 500,
+            Cursor = "credit-page",
+            MinTime = DateTimeOffset.FromUnixTimeSeconds(1755600000),
+            MaxTime = DateTimeOffset.FromUnixTimeSeconds(1755686400)
+        });
+
+        result.Items.Should().ContainSingle();
+        result.HasMore.Should().BeTrue();
+        result.Credits[0].CreditId.Should().Be("credit-1");
+        result.Credits[0].Type.Should().Be("trading_fee_rebate");
+        result.Credits[0].Status.Should().Be(CreditStatus.Applied);
+        result.Credits[0].AmountDollars.Should().Be("0.000001");
+        result.Credits[0].Reason.Should().Be("Rebate for MARKET-1");
+        result.Credits[0].CreatedTime.Should().Be(DateTimeOffset.Parse("2026-10-29T12:00:00Z", CultureInfo.InvariantCulture));
+        result.Cursor.Should().Be("next-credit-page");
+    }
+
+    [Fact]
+    public async Task ListCreditHistoryAsync_OmitsOptionalQueryParameters()
+    {
+        _server.Given(Request.Create()
+                .WithPath("/trade-api/v2/portfolio/credit_history")
+                .UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("""{"credits":[],"cursor":""}"""));
+
+        var result = await _portfolioClient.ListCreditHistoryAsync();
+
+        result.Items.Should().BeEmpty();
+        result.HasMore.Should().BeFalse();
+        _server.LogEntries.Should().ContainSingle();
+        _server.LogEntries[0].RequestMessage!.Query.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public void CreditHistoryResponse_RejectsMissingRequiredMembers()
+    {
+        Action parse = () => JsonSerializer.Deserialize<CreditHistoryResponse>(
+            """{"credits":[{"credit_id":"credit-1","type":"rebate","status":"applied","amount_dollars":"0.000001","reason":"missing created time"}],"cursor":""}""",
+            KalshiJsonOptions.Default);
+
+        parse.Should().Throw<JsonException>();
+    }
+
+    [Fact]
     public void PortfolioHistoryQueries_ValidateRanges()
     {
         var invalidSettlementLimit = () => new SettlementQuery { Limit = 0 }.ToQueryString();
         var invalidSettlementSubaccount = () => new SettlementQuery { Subaccount = 64 }.ToQueryString();
         var invalidTransferLimit = () => new SubaccountTransferQuery { Limit = 1001 }.ToQueryString();
+        var invalidCreditHistoryLimit = () => new CreditHistoryQuery { Limit = 1001 }.ToQueryString();
 
         invalidSettlementLimit.Should().Throw<ArgumentOutOfRangeException>();
         invalidSettlementSubaccount.Should().Throw<ArgumentOutOfRangeException>();
         invalidTransferLimit.Should().Throw<ArgumentOutOfRangeException>();
+        invalidCreditHistoryLimit.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]
