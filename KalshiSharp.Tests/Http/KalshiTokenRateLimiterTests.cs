@@ -15,6 +15,8 @@ public sealed class KalshiTokenRateLimiterTests
 
         options.WriteTokensPerSecond.Should().Be(100);
         options.WriteTokenLimit.Should().Be(100);
+        options.BalanceTokensPerSecond.Should().Be(1);
+        options.BalanceTokenLimit.Should().Be(1);
     }
 
     [Fact]
@@ -32,6 +34,25 @@ public sealed class KalshiTokenRateLimiterTests
         await limiter.WaitAsync(new RateLimitRequest { IsWrite = false, TokenCost = 1 });
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         await limiter.WaitAsync(new RateLimitRequest { IsWrite = true, TokenCost = 1 });
+
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(200));
+    }
+
+    [Fact]
+    public async Task BalanceReadBucket_IsIndependentFromOtherReads()
+    {
+        await using var limiter = new KalshiTokenRateLimiter(new KalshiRateLimitOptions
+        {
+            ReadTokensPerSecond = 1,
+            ReadTokenLimit = 1,
+            BalanceTokensPerSecond = 1,
+            BalanceTokenLimit = 1,
+            QueueLimit = 5
+        });
+
+        await limiter.WaitAsync(new RateLimitRequest { IsWrite = false, IsBalanceRead = true, TokenCost = 1 });
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        await limiter.WaitAsync(new RateLimitRequest { IsWrite = false, TokenCost = 1 });
 
         stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(200));
     }
@@ -121,6 +142,20 @@ public sealed class KalshiTokenRateLimiterTests
         var result = await RateLimitingDelegatingHandler.ClassifyAsync(request, 17, default);
 
         result.IsWrite.Should().BeFalse();
+        result.TokenCost.Should().Be(17);
+        result.IsBalanceRead.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_BalanceReadsUseDedicatedBudget()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            "https://example.test/trade-api/v2/portfolio/balance?subaccount=3");
+
+        var result = await RateLimitingDelegatingHandler.ClassifyAsync(request, 17, default);
+
+        result.IsWrite.Should().BeFalse();
+        result.IsBalanceRead.Should().BeTrue();
         result.TokenCost.Should().Be(17);
     }
 

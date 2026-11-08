@@ -119,4 +119,10 @@ public interface IPortfolioClient
         SettlementQuery? query = null,
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This portfolio client does not support settlement history.");
+
+    /// <summary>Lists credit history using the current query contract.</summary>
+    Task<CreditHistoryResponse> ListCreditHistoryAsync(
+        CreditHistoryQuery? query = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This portfolio client does not support credit history.");
 }

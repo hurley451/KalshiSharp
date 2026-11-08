@@ -266,6 +266,19 @@ internal sealed class PortfolioClient : IPortfolioClient
         return _httpClient.SendAsync<SettlementsResponse>(request, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task<CreditHistoryResponse> ListCreditHistoryAsync(
+        CreditHistoryQuery? query = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"{BasePath}/credit_history{query?.ToQueryString()}"
+        };
+        return _httpClient.SendAsync<CreditHistoryResponse>(request, cancellationToken);
+    }
+
     private static string BuildPositionsQueryString(
         string? cursor,
         int? limit,

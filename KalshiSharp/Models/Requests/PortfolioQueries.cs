@@ -58,6 +58,28 @@ public sealed record SettlementQuery : PaginationParameters
     }
 }
 
+/// <summary>Query parameters for portfolio credit history.</summary>
+public sealed record CreditHistoryQuery : PaginationParameters
+{
+    /// <summary>Filter credits created at or after this Unix timestamp.</summary>
+    public DateTimeOffset? MinTime { get; init; }
+
+    /// <summary>Filter credits created before this Unix timestamp.</summary>
+    public DateTimeOffset? MaxTime { get; init; }
+
+    /// <summary>Builds the encoded query string.</summary>
+    public string ToQueryString()
+    {
+        SettlementQuery.ValidateLimit(Limit);
+
+        var builder = new QueryStringBuilder();
+        AppendPaginationParameters(builder);
+        builder.AppendIfNotNull("min_ts", MinTime?.ToUnixTimeSeconds());
+        builder.AppendIfNotNull("max_ts", MaxTime?.ToUnixTimeSeconds());
+        return builder.Build();
+    }
+}
+
 /// <summary>Query parameters for subaccount transfer history.</summary>
 public sealed record SubaccountTransferQuery : PaginationParameters
 {

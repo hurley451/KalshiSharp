@@ -108,7 +108,17 @@ public sealed partial class RateLimitingDelegatingHandler : DelegatingHandler
         var isWrite = request.Method != HttpMethod.Get && request.Method != HttpMethod.Head;
         if (!isWrite)
         {
-            return new RateLimitRequest { IsWrite = false, TokenCost = defaultTokenCost };
+            var balancePath = request.RequestUri is { IsAbsoluteUri: true } balanceAbsolute
+                ? balanceAbsolute.AbsolutePath
+                : request.RequestUri?.OriginalString.Split('?', 2)[0] ?? string.Empty;
+            return new RateLimitRequest
+            {
+                IsWrite = false,
+                IsBalanceRead = request.Method == HttpMethod.Get && balancePath.TrimEnd('/').Equals(
+                    "/trade-api/v2/portfolio/balance",
+                    StringComparison.OrdinalIgnoreCase),
+                TokenCost = defaultTokenCost
+            };
         }
 
         var path = request.RequestUri is { IsAbsoluteUri: true } absolute

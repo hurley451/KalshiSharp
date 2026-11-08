@@ -222,7 +222,7 @@ public sealed class HistoricalClientTests : IDisposable
                 .WithParam("event_ticker", "KXTEST-26AUG")
                 .UsingGet())
             .RespondWith(JsonResponse("""
-                {"market_positions":[{"ticker":"KXTEST-26AUG19","exchange_index":1,"position_fp":"2.50","market_exposure_dollars":"1.08125","last_updated_ts":"2026-05-01T00:00:00Z"}],"event_positions":[],"cursor":""}
+                {"market_positions":[{"ticker":"KXTEST-26AUG19","exchange_index":1,"position_fp":"2.50","market_exposure_dollars":"1.08125","netting_enabled":false,"last_updated_ts":"2026-05-01T00:00:00Z"}],"event_positions":[],"cursor":""}
                 """));
 
         var trades = await _client.ListTradesAsync(new HistoricalTradeQuery { Ticker = "KXTEST-26AUG19", IsBlockTrade = true });
@@ -235,6 +235,7 @@ public sealed class HistoricalClientTests : IDisposable
         fills.Fills[0].ExchangeIndex.Should().Be(1);
         orders.Orders[0].FillCountFp.Should().Be("2.50");
         positions.MarketPositions[0].ExchangeIndex.Should().Be(1);
+        positions.MarketPositions[0].NettingEnabled.Should().BeFalse();
     }
 
     [Fact]
