@@ -24,6 +24,12 @@ public sealed record ApiKeyResponse
     /// <summary>Granted scopes.</summary>
     public IReadOnlyList<string> Scopes { get; init; } = [];
 
+    /// <summary>
+    /// Algorithm reported by Kalshi for this key, such as <c>rsa</c> or <c>ed25519</c>.
+    /// Omitted when the platform cannot determine the algorithm; future values are preserved.
+    /// </summary>
+    public string? KeyType { get; init; }
+
     /// <summary>Optional subaccount binding.</summary>
     public int? Subaccount { get; init; }
 
