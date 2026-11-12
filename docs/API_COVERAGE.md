@@ -21,7 +21,7 @@ where optional clients are introduced.
 | Historical data | Cutoff, markets, candlesticks, trades, fills, orders, and positions |
 | Incentive programs | Liquidity, margin maker-volume, and margin taker-volume program shapes |
 | Live data | Generic, legacy, batch, event, game-stat, weather index, and weather calibration endpoints |
-| API keys | List, create, generate, and delete API keys |
+| API keys | List, create, generate, and delete API keys, including listed key algorithm metadata |
 | Communications | Communications identity, block-trade proposals, RFQ list/create/read/delete, quote list/create/read/delete/accept/confirm |
 
 ## WebSocket Coverage

@@ -523,7 +523,7 @@ var apiKeys = client.ApiKeys
 var keys = await apiKeys.ListApiKeysAsync();
 foreach (var key in keys.ApiKeys)
 {
-    Console.WriteLine($"{key.ApiKeyId}: {key.Name}");
+    Console.WriteLine($"{key.ApiKeyId}: {key.Name} ({key.KeyType ?? "unknown algorithm"})");
 }
 
 var generated = await apiKeys.GenerateApiKeyAsync(new GenerateApiKeyRequest

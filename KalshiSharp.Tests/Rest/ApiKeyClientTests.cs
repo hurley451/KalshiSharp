@@ -77,8 +77,26 @@ public sealed class ApiKeyClientTests : IDisposable
                             "api_key_id": "key-1",
                             "name": "readonly",
                             "scopes": ["read"],
+                            "key_type": "rsa",
                             "subaccount": 31,
                             "fcm_subtrader_id": "user-1_suffix"
+                        },
+                        {
+                            "api_key_id": "key-2",
+                            "name": "ed25519-key",
+                            "scopes": ["read"],
+                            "key_type": "ed25519"
+                        },
+                        {
+                            "api_key_id": "key-3",
+                            "name": "future-key-type",
+                            "scopes": ["read"],
+                            "key_type": "future_algorithm"
+                        },
+                        {
+                            "api_key_id": "key-4",
+                            "name": "unknown-key-type",
+                            "scopes": ["read"]
                         }
                     ],
                     "api_key_region_expiration_ts": 1790000000
@@ -91,12 +109,16 @@ public sealed class ApiKeyClientTests : IDisposable
         });
 
         result.ApiKeyRegionExpirationTs.Should().Be(1790000000);
-        var key = result.ApiKeys.Should().ContainSingle().Which;
+        var key = result.ApiKeys.Should().ContainSingle(key => key.ApiKeyId == "key-1").Which;
         key.ApiKeyId.Should().Be("key-1");
         key.Name.Should().Be("readonly");
         key.Scopes.Should().Equal(ApiKeyScopes.Read);
+        key.KeyType.Should().Be("rsa");
         key.Subaccount.Should().Be(31);
         key.FcmSubtraderId.Should().Be("user-1_suffix");
+        result.ApiKeys.Should().ContainSingle(key => key.ApiKeyId == "key-2" && key.KeyType == "ed25519");
+        result.ApiKeys.Should().ContainSingle(key => key.ApiKeyId == "key-3" && key.KeyType == "future_algorithm");
+        result.ApiKeys.Should().ContainSingle(key => key.ApiKeyId == "key-4" && key.KeyType == null);
     }
 
     [Fact]
