@@ -1,5 +1,6 @@
 using KalshiSharp.Http;
 using KalshiSharp.Models.Responses;
+using KalshiSharp.Models.Requests;
 
 namespace KalshiSharp.Rest.Exchange;
 
@@ -20,6 +21,14 @@ internal sealed class ExchangeClient : IExchangeClient
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
+
+    /// <inheritdoc />
+    public Task<SeriesFeeChangesResponse> GetSeriesFeeChangesAsync(SeriesFeeChangesQuery? query = null, CancellationToken cancellationToken = default) =>
+        _httpClient.SendAsync<SeriesFeeChangesResponse>(new KalshiRequest
+        {
+            Method = HttpMethod.Get,
+            Path = $"/trade-api/v2/series/fee_changes{query?.ToQueryString()}"
+        }, cancellationToken);
 
     /// <inheritdoc />
     public Task<ExchangeStatusResponse> GetStatusAsync(CancellationToken cancellationToken = default)

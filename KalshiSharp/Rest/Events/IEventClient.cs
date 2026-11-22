@@ -8,6 +8,10 @@ namespace KalshiSharp.Rest.Events;
 /// </summary>
 public interface IEventClient
 {
+    /// <summary>Gets one public page of scheduled event fee overrides, including nullable override clears.</summary>
+    Task<EventFeeChangesResponse> GetEventFeeChangesAsync(EventFeeChangesQuery? query = null, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This event client does not support event fee changes.");
+
     /// <summary>
     /// Gets a single event by ticker.
     /// </summary>
