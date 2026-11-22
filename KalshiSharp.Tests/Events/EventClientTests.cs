@@ -422,7 +422,7 @@ public sealed class EventClientTests : IDisposable
     }
 
     [Fact]
-    public async Task GetEventAsync_WithNestedMarkets_MapsAllMarketFields()
+    public async Task GetEventAsync_WithNestedMarkets_MapsCurrentExpirationFields()
     {
         const string eventTicker = "AAPL-EVENT";
         _server.Given(Request.Create()
@@ -463,8 +463,7 @@ public sealed class EventClientTests : IDisposable
                                 "tick_size": 1,
                                 "open_time": "2024-01-01T09:00:00Z",
                                 "close_time": "2024-01-01T17:00:00Z",
-                                "expiration_time": "2024-01-01T17:00:00Z",
-                                "expected_expiration_time": "2024-01-01T17:00:00Z",
+                                "expected_expiration_time": "2024-01-02T17:00:00Z",
                                 "latest_expiration_time": "2024-01-02T17:00:00Z",
                                 "created_time": "2023-12-01T00:00:00Z",
                                 "settlement_timer_seconds": 3600,
@@ -511,8 +510,8 @@ public sealed class EventClientTests : IDisposable
         market.TickSize.Should().Be(1);
         market.OpenTime.Should().Be(new DateTimeOffset(2024, 1, 1, 9, 0, 0, TimeSpan.Zero));
         market.CloseTime.Should().Be(new DateTimeOffset(2024, 1, 1, 17, 0, 0, TimeSpan.Zero));
-        market.ExpirationTime.Should().Be(new DateTimeOffset(2024, 1, 1, 17, 0, 0, TimeSpan.Zero));
-        market.ExpectedExpirationTime.Should().Be(new DateTimeOffset(2024, 1, 1, 17, 0, 0, TimeSpan.Zero));
+        market.ExpirationTime.Should().BeNull();
+        market.ExpectedExpirationTime.Should().Be(new DateTimeOffset(2024, 1, 2, 17, 0, 0, TimeSpan.Zero));
         market.LatestExpirationTime.Should().Be(new DateTimeOffset(2024, 1, 2, 17, 0, 0, TimeSpan.Zero));
         market.CreatedTime.Should().Be(new DateTimeOffset(2023, 12, 1, 0, 0, 0, TimeSpan.Zero));
         market.SettlementTimerSeconds.Should().Be(3600);

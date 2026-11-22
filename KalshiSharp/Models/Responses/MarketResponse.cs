@@ -190,7 +190,8 @@ public sealed record MarketResponse
     public DateTimeOffset? CloseTime { get; init; }
 
     /// <summary>
-    /// When the market expires/settles.
+    /// Legacy market expiration time. Kalshi no longer returns this field for market responses;
+    /// use <see cref="LatestExpirationTime"/> instead. Order expiration timestamps are unaffected.
     /// </summary>
     public DateTimeOffset? ExpirationTime { get; init; }
 
